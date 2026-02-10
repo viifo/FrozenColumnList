@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/nav_watchlist"
+        android:icon="@android:drawable/btn_star"
+        android:title="自选" />
+    <item
+        android:id="@+id/nav_market"
+        android:icon="@android:drawable/btn_star"
+        android:title="行情" />
+    <item
+        android:id="@+id/nav_profile"
+        android:icon="@android:drawable/btn_star"
+        android:title="我的" />
+</menu>
