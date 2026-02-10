@@ -1,8 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <resources>
-        <declare-styleable name="FrozenColumnList">
-            <attr name="frozenColumnCount" format="integer" />
-        </declare-styleable>
-    </resources>
+    <declare-styleable name="FrozenColumnList">
+        <attr name="frozenColumnCount" format="integer" />
+    </declare-styleable>
 </resources>

@@ -1,4 +1,4 @@
-package com.viifo.frozencolumnlist
+package com.viifo.frozencolumnlist.demo.ui
 
 import android.os.Bundle
 import androidx.activity.enableEdgeToEdge
@@ -8,7 +8,9 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.get
 import androidx.viewpager2.widget.ViewPager2.OnPageChangeCallback
-import com.viifo.frozencolumnlist.databinding.ActivityMainBinding
+import com.viifo.frozencolumnlist.demo.R
+import com.viifo.frozencolumnlist.demo.databinding.ActivityMainBinding
+import com.viifo.frozencolumnlist.demo.ui.adapter.MainPagerAdapter
 
 
 class MainActivity : AppCompatActivity() {
@@ -21,16 +23,11 @@ class MainActivity : AppCompatActivity() {
         setContentView(mBinding.root)
         ViewCompat.setOnApplyWindowInsetsListener(mBinding.root) { v, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            v.setPadding(v.paddingLeft, v.paddingTop, v.paddingRight, systemBars.bottom)
+            v.setPadding(v.paddingLeft, systemBars.top, v.paddingRight, systemBars.bottom)
             WindowInsetsCompat.Builder(insets)
                 .setInsets(
                     WindowInsetsCompat.Type.systemBars(),
-                    Insets.of(
-                        systemBars.left,
-                        systemBars.top,
-                        systemBars.right,
-                        0
-                    )
+                    Insets.of(systemBars.left, 0, systemBars.right, 0)
                 )
                 .build()
         }

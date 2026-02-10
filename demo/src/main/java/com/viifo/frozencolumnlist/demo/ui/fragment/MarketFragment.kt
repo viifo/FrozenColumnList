@@ -1,22 +1,22 @@
-package com.viifo.frozencolumnlist
+package com.viifo.frozencolumnlist.demo.ui.fragment
 
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
-import com.viifo.frozencolumnlist.databinding.FragementWatchlistBinding
+import com.viifo.frozencolumnlist.demo.databinding.FragementMarketBinding
 
-class WatchlistFragment: Fragment() {
+class MarketFragment: Fragment() {
 
-    private var mBinding: FragementWatchlistBinding? = null
+    private var mBinding: FragementMarketBinding? = null
 
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        return FragementWatchlistBinding.inflate(
+        return FragementMarketBinding.inflate(
             inflater,
             container,
             false

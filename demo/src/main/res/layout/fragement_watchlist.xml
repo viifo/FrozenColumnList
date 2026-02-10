@@ -2,14 +2,41 @@
 <androidx.constraintlayout.widget.ConstraintLayout
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
     <androidx.appcompat.widget.AppCompatTextView
+        android:id="@+id/tv_tab_watchlist"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Watchlist"
+        android:text="自选"
         android:textSize="18sp"
+        android:textStyle="bold"
+        android:textColor="@color/black"
+        android:padding="12dp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        tools:ignore="HardcodedText" />
+
+    <androidx.appcompat.widget.AppCompatTextView
+        android:id="@+id/tv_tab_positions"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="持仓"
+        android:textSize="16sp"
+        android:textColor="@color/gray"
+        android:padding="12dp"
+        app:layout_constraintStart_toEndOf="@id/tv_tab_watchlist"
+        app:layout_constraintBottom_toBottomOf="@id/tv_tab_watchlist"
+        tools:ignore="HardcodedText" />
+
+    <com.viifo.frozencolumnlist.FrozenColumnList
+        android:id="@+id/frozen_column_list"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_marginTop="50dp"
+        android:paddingHorizontal="12dp"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="parent"

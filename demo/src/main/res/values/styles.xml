@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="AutoSizeNumberText">
+        <item name="android:gravity">center_vertical</item>
+        <item name="autoSizeTextType">uniform</item>
+        <item name="autoSizeMinTextSize">1px</item>
+        <item name="android:lines">1</item>
+    </style>
+</resources>
