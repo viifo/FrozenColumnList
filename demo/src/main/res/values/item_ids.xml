@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <item name="item_tv_name" type="id"/>
+    <item name="item_tv_code" type="id"/>
+    <item name="item_tv_price" type="id"/>
+    <item name="item_tv_change" type="id"/>
+    <item name="item_tv_change_amount" type="id"/>
+    <item name="item_tv_prev_close" type="id"/>
+    <item name="item_tv_volume" type="id"/>
+    <item name="item_tv_amplitude" type="id"/>
+    <item name="item_tv_turnover" type="id"/>
+    <item name="item_tv_market_cap" type="id"/>
+    <item name="item_tv_circulating_cap" type="id"/>
+</resources>

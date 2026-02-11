@@ -41,6 +41,7 @@ class MainActivity : AppCompatActivity() {
                 mBinding.bottomNavigation.menu[position].isChecked = true
             }
         })
+        mBinding.viewPager2.isUserInputEnabled = false
         mBinding.bottomNavigation.setOnItemSelectedListener({ item ->
             val itemId: Int = item.itemId
             when (itemId) {

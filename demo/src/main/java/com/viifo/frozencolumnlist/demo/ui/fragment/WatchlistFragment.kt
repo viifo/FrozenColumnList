@@ -4,15 +4,19 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Toast
 import androidx.fragment.app.Fragment
+import com.viifo.frozencolumnlist.data.FrozenHeaderData
+import com.viifo.frozencolumnlist.demo.R
 import com.viifo.frozencolumnlist.demo.data.StockModel
 import com.viifo.frozencolumnlist.demo.databinding.FragementWatchlistBinding
-import com.viifo.frozencolumnlist.demo.ui.adapter.StockAdapter
 
+/**
+ * 自选列表Fragment
+ */
 class WatchlistFragment: Fragment() {
 
     private var mBinding: FragementWatchlistBinding? = null
-    private var mAdapter: StockAdapter? = null
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -33,19 +37,22 @@ class WatchlistFragment: Fragment() {
     }
 
     private fun initView() {
-        mAdapter = StockAdapter()
-        mBinding?.frozenColumnList?.setAdapter(mAdapter)
+        mBinding?.frozenColumnList?.setProvider(StockColumnProvider())
+        mBinding?.frozenColumnList?.setHeaderData(mockStockHeaderData())
+        mBinding?.frozenColumnList?.onHeaderClickListener = { _, header ->
+            Toast.makeText(requireContext(), "点击了${header?.name}", Toast.LENGTH_SHORT).show()
+        }
     }
 
     private fun initData() {
-        mAdapter?.setData(mockStockData())
+        mBinding?.frozenColumnList?.submitList(mockStockData())
     }
 
     /**
      * 模拟股票数据
      */
     private fun mockStockData(): List<StockModel> {
-        return List(50) { i ->
+        return List(200) { i ->
             val isUp = (0..1).random() == 1
             val prefix = if (isUp) "+" else "-"
             StockModel(
@@ -62,6 +69,51 @@ class WatchlistFragment: Fragment() {
                 circulatingCap = "${(50..4000).random()}亿",
             )
         }
+    }
+
+    private fun mockStockHeaderData(): List<FrozenHeaderData> {
+        return listOf(
+            FrozenHeaderData(
+                id = 1,
+                name = context?.getString(R.string.stock_name)
+            ),
+            FrozenHeaderData(
+                id = 2,
+                name = context?.getString(R.string.stock_price)
+            ),
+            FrozenHeaderData(
+                id = 3,
+                name = context?.getString(R.string.stock_change)
+            ),
+            FrozenHeaderData(
+                id = 4,
+                name = context?.getString(R.string.stock_change_amount)
+            ),
+            FrozenHeaderData(
+                id = 5,
+                name = context?.getString(R.string.stock_close_price)
+            ),
+            FrozenHeaderData(
+                id = 6,
+                name = context?.getString(R.string.stock_volume)
+            ),
+            FrozenHeaderData(
+                id = 7,
+                name = context?.getString(R.string.stock_amplitude)
+            ),
+            FrozenHeaderData(
+                id = 8,
+                name = context?.getString(R.string.stock_turnover)
+            ),
+            FrozenHeaderData(
+                id = 9,
+                name = context?.getString(R.string.stock_market_cap)
+            ),
+            FrozenHeaderData(
+                id = 10,
+                name = context?.getString(R.string.stock_circulating_cap)
+            ),
+        )
     }
 
 }

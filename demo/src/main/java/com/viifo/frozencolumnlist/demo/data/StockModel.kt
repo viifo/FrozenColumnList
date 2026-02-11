@@ -1,5 +1,7 @@
 package com.viifo.frozencolumnlist.demo.data
 
+import com.viifo.frozencolumnlist.data.FrozenColumnData
+
 data class StockModel(
     val code: String,       // 股票代码 (固定列使用)
     val name: String,       // 股票名称 (固定列使用)
@@ -12,4 +14,4 @@ data class StockModel(
     val turnover: String,    // 换手率
     val marketCap: String,      // 总市值
     val circulatingCap: String, // 流通市值
-)
+) : FrozenColumnData(code)
