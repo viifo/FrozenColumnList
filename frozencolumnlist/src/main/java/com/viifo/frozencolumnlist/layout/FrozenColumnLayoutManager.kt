@@ -18,7 +18,7 @@ import kotlin.math.abs
 /**
  * 一个支持冻结（固定）列的 RecyclerView 布局管理器
  */
-internal class FrozenColumnLayoutManager(
+class FrozenColumnLayoutManager(
     context: Context
 ) : LinearLayoutManager(context, VERTICAL, false) {
 
@@ -30,16 +30,16 @@ internal class FrozenColumnLayoutManager(
     }
 
     /** 越界回弹阻尼系数，默认为 0.6f */
-    var overScrollDamping = 0.6f
+    internal var overScrollDamping = 0.6f
     /** 越界回弹动画触发阈值（像素, 默认 10dp） */
-    var overScrollAnimatorThreshold = context.dp2px(10)
+    internal var overScrollAnimatorThreshold = context.dp2px(10)
     /** 最大越界距离（像素, 默认 80dp） */
-    var maxOverScrollThreshold = context.dp2px(80)
+    internal var maxOverScrollThreshold = context.dp2px(80)
     /** 越界回弹动画, 默认使用 [DefaultSpringBackAnimatorProvider], 设置为 null 禁用 */
-    var springBackAnimatorProvider: SpringBackAnimatorProvider? = DefaultSpringBackAnimatorProvider()
+    internal var springBackAnimatorProvider: SpringBackAnimatorProvider? = DefaultSpringBackAnimatorProvider()
 
     /** 冻结(固定)的列数 */
-    var frozenColumnCount: Int = 1
+    internal var frozenColumnCount: Int = 1
 
     /** 已添加的 RecyclerView */
     private var attachedRecyclerView: RecyclerView? = null
@@ -47,13 +47,13 @@ internal class FrozenColumnLayoutManager(
     private val horizontalScrollListeners = CopyOnWriteArrayList<(Int) -> Unit>()
 
     /** 水平滚动偏移量 */
-    var horizontalOffset = 0
+    internal var horizontalOffset = 0
         private set
     /** 固定列的宽度 */
-    var frozenColumnWidth = 0
+    internal var frozenColumnWidth = 0
         private set
     /** 最大可滚动距离 */
-     var maxScrollWidth = 0
+    internal var maxScrollWidth = 0
         private set
     /** item 裁剪区域 */
     private val clipRect = Rect()
@@ -251,7 +251,7 @@ internal class FrozenColumnLayoutManager(
      * 同步每行中可滚动列的位置
      * @param viewGroup 行视图组
      */
-    fun syncColumns(viewGroup: ViewGroup) {
+    internal fun syncColumns(viewGroup: ViewGroup) {
         if (viewGroup.getTag(R.id.tag_frozencolumnlist_last_offset) == horizontalOffset) {
             return
         }
@@ -341,7 +341,7 @@ internal class FrozenColumnLayoutManager(
     /**
      * 更新水平滚动偏移量并同步所有可见行
      */
-    fun updateHorizontalOffset(newOffset: Int) {
+    internal fun updateHorizontalOffset(newOffset: Int) {
         horizontalOffset = newOffset
         syncColumns()
         // 通知 RecyclerView 刷新 ItemDecoration
@@ -368,7 +368,7 @@ internal class FrozenColumnLayoutManager(
      * 添加水平滑动监听
      * @param listener 水平滑动监听回调
      */
-    fun addHorizontalScrollListener(listener: (Int) -> Unit) {
+    internal fun addHorizontalScrollListener(listener: (Int) -> Unit) {
         if (!horizontalScrollListeners.contains(listener)) {
             horizontalScrollListeners.add(listener)
         }
@@ -378,14 +378,14 @@ internal class FrozenColumnLayoutManager(
      * 移除水平滑动监听
      * @param listener 要移除的水平滑动监听回调
      */
-    fun removeHorizontalScrollListener(listener: (Int) -> Unit) {
+    internal fun removeHorizontalScrollListener(listener: (Int) -> Unit) {
         horizontalScrollListeners.remove(listener)
     }
 
     /**
      * 清空所有水平滑动监听
      */
-    fun removeAllHorizontalScrollListener() {
+    internal fun removeAllHorizontalScrollListener() {
         horizontalScrollListeners.clear()
     }
 

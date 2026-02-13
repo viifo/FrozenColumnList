@@ -57,7 +57,7 @@ class FrozenColumnList @JvmOverloads constructor(
         }
 
     /** 内部持有的 RecyclerView */
-    private val recyclerView: RecyclerView = RecyclerView(context).apply {
+    val recyclerView: RecyclerView = RecyclerView(context).apply {
         layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT)
     }
     private var provider: ColumnProvider<out FrozenColumnData>? = null
@@ -106,6 +106,10 @@ class FrozenColumnList @JvmOverloads constructor(
         if (header == null) return
         layoutManager?.addHorizontalScrollListener {
             layoutManager?.syncColumns(header)
+        }
+        header.onHorizontalScrollListener = { event ->
+            // 将 Header 的触摸事件转发给 RecyclerView 处理
+            recyclerView.dispatchTouchEvent(event)
         }
     }
 
