@@ -32,8 +32,29 @@ class StockColumnProvider : ColumnProvider<StockModel> {
         }
     }
 
+    override fun createFrozenHeader(parent: ViewGroup, data: List<FrozenHeaderData>): List<View> {
+        return (0 until data.size).map {
+            createHeaderView(
+                context = parent.context,
+                gravity = Gravity.START or Gravity.CENTER_VERTICAL,
+                text = data[it].name,
+                paddingStart = parent.context.dp2px(12),
+                paddingEnd = parent.context.dp2px(8),
+            )
+        }
+    }
+
+    override fun createScrollableHeader(parent: ViewGroup, data: List<FrozenHeaderData>): List<View> {
+        return (0 until data.size).map { index ->
+            createHeaderView(
+                context = parent.context,
+                text = data[index].name,
+                paddingEnd = parent.context.dp2px(if (index == data.size - 1) 12 else 8),
+            )
+        }
+    }
+
     override fun createRowContainer(parent: ViewGroup): ViewGroup {
-        val paddingVertical = parent.context.dp2px(8)
         return LinearLayoutCompat(parent.context).apply {
             layoutParams = RecyclerView.LayoutParams(
                 RecyclerView.LayoutParams.MATCH_PARENT,
@@ -41,31 +62,16 @@ class StockColumnProvider : ColumnProvider<StockModel> {
             )
             orientation = LinearLayoutCompat.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(0, paddingVertical, 0, paddingVertical)
         }
     }
 
-    override fun createFrozenHeader(parent: ViewGroup, data: List<FrozenHeaderData>): List<View> {
-        return (0 until data.size).map {
-            createHeaderView(
-                context = parent.context,
-                gravity = Gravity.START,
-                text = data[it].name
-            )
-        }
-    }
-
-    override fun createScrollableHeader(parent: ViewGroup, data: List<FrozenHeaderData>): List<View> {
-        return (0 until data.size).map {
-            createHeaderView(context = parent.context, text = data[it].name)
-        }
-    }
-
-    override fun createFrozenViews(parent: ViewGroup, size: Int): List<View> {
+    override fun createRowFrozenViews(parent: ViewGroup, size: Int): List<View> {
+        val paddingVertical = parent.context.dp2px(8)
         return (0 until size).map {
             LinearLayoutCompat(parent.context).apply {
                 orientation = LinearLayoutCompat.VERTICAL
                 gravity = Gravity.START or Gravity.CENTER_VERTICAL
+                setBackgroundColor(Color.WHITE)
                 addView(AppCompatTextView(parent.context).also {
                     it.id = R.id.item_tv_name
                     it.setTextColor(Color.BLACK)
@@ -76,11 +82,17 @@ class StockColumnProvider : ColumnProvider<StockModel> {
                     it.setTextColor(Color.GRAY)
                     it.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
                 })
+                setPadding(
+                    parent.context.dp2px(12),
+                    paddingVertical,
+                    parent.context.dp2px(8),
+                    paddingVertical
+                )
             }
         }
     }
 
-    override fun createScrollableViews(parent: ViewGroup, size: Int): List<View> {
+    override fun createRowScrollableViews(parent: ViewGroup, size: Int): List<View> {
         // 可滚动列 (动态设置，eg.这里设置 9 列)
         return (0 until size).map { index ->
             AppCompatTextView(parent.context).also {
@@ -88,16 +100,19 @@ class StockColumnProvider : ColumnProvider<StockModel> {
                 // it.id = R.id.item_xxx
                 it.setTextColor(Color.BLACK)
                 it.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
-                it.gravity = Gravity.END
+                it.gravity = Gravity.END or Gravity.CENTER_VERTICAL
                 it.setPadding(
-                    if (index == 0) 0 else parent.context.dp2px(8),
-                    0, 0, 0
+                    0,
+                    0,
+                    parent.context.dp2px(if (index == size - 1) 12 else 8),
+                    0
                 )
+                it.setBackgroundColor(Color.WHITE)
             }
         }
     }
 
-    override fun bindFrozenViews(views: List<View>, data: StockModel, payloads: List<Any?>) {
+    override fun bindRowFrozenViews(views: List<View>, data: StockModel, payloads: List<Any?>) {
         // 固定列数据绑定
         views.getOrNull(0)?.apply {
             findViewById<AppCompatTextView>(R.id.item_tv_name).text = data.name
@@ -105,7 +120,7 @@ class StockColumnProvider : ColumnProvider<StockModel> {
         }
     }
 
-    override fun bindScrollableViews(views: List<View>, data: StockModel, payloads: List<Any?>) {
+    override fun bindRowScrollableViews(views: List<View>, data: StockModel, payloads: List<Any?>) {
         // 可滚动列数据绑定
         (views.getOrNull(0) as? AppCompatTextView)?.text = data.price
         (views.getOrNull(1) as? AppCompatTextView)?.let {
@@ -125,14 +140,16 @@ class StockColumnProvider : ColumnProvider<StockModel> {
     private fun createHeaderView(
         context: Context,
         text: String?,
-        gravity: Int = Gravity.END
+        gravity: Int = Gravity.END or Gravity.CENTER_VERTICAL,
+        paddingStart: Int = 0,
+        paddingEnd: Int = 0,
     ): AppCompatTextView {
         return AppCompatTextView(context).also {
             it.text = text
             it.setTextColor(Color.GRAY)
             it.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
             it.gravity = gravity
-            it.setPadding(0, context.dp2px(12), 0, context.dp2px(12))
+            it.setPadding(paddingStart, 0, paddingEnd, 0)
         }
     }
 }

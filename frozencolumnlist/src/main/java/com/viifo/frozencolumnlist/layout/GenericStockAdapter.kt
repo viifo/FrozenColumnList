@@ -1,13 +1,14 @@
-package com.viifo.frozencolumnlist
+package com.viifo.frozencolumnlist.layout
 
 import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
-import com.viifo.frozencolumnlist.GenericStockAdapter.GenericViewHolder
+import com.viifo.frozencolumnlist.FrozenColumConfig
+import com.viifo.frozencolumnlist.layout.GenericStockAdapter.GenericViewHolder
 import com.viifo.frozencolumnlist.data.FrozenColumnData
-import com.viifo.frozencolumnlist.data.FrozenHeaderData
+import com.viifo.frozencolumnlist.ext.dp2px
 import com.viifo.frozencolumnlist.provider.ColumnProvider
 
 /**
@@ -19,31 +20,30 @@ class GenericStockAdapter<T: FrozenColumnData>(
     diffCallback: DiffUtil.ItemCallback<T> = genericDiffCallback()
 ) : ListAdapter<T, GenericViewHolder<T>>(diffCallback) {
 
-    /** 固定列数量 */
-    var mFrozenColumnCount: Int = 1
-    /** 可滚动列数量 */
-    var mScrollableColumnCount: Int = 0
-
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): GenericViewHolder<T> {
+        // 固定列数量
+        val frozenColumnCount = provider.getFrozenColumnCount()
+        // 可滚动列数量
+        val scrollableColumnCount = getItem(0).columnCount - frozenColumnCount
         // 外部行容器，使用 LinearLayoutCompat 水平排列
         val rowContainer = provider.createRowContainer(parent)
         // 调用 Provider 预生成 View
-        val frozenViews = provider.createFrozenViews(rowContainer, mFrozenColumnCount)
-        val scrollViews = provider.createScrollableViews(rowContainer, mScrollableColumnCount)
+        val frozenViews = provider.createRowFrozenViews(rowContainer, frozenColumnCount)
+        val scrollViews = provider.createRowScrollableViews(rowContainer, scrollableColumnCount)
         val viewWidths = provider.getColumnWidths(rowContainer, frozenViews.size + scrollViews.size)
         // 将 View 添加到外部行容器
         frozenViews.forEachIndexed { index, view ->
             rowContainer.addView(
                 view,
-                viewWidths[index],
-                ViewGroup.LayoutParams.WRAP_CONTENT
+                viewWidths.getOrNull(index) ?: parent.context.dp2px(FrozenColumConfig.DEFAULT_COLUMN_WITH_DP),
+                ViewGroup.LayoutParams.MATCH_PARENT
             )
         }
         scrollViews.forEachIndexed { index, view ->
             rowContainer.addView(
                 view,
-                viewWidths[frozenViews.size + index],
-                ViewGroup.LayoutParams.WRAP_CONTENT
+                viewWidths.getOrNull(frozenViews.size + index) ?: parent.context.dp2px(FrozenColumConfig.DEFAULT_COLUMN_WITH_DP),
+                ViewGroup.LayoutParams.MATCH_PARENT
             )
         }
         // 返回 ViewHolder
@@ -81,13 +81,13 @@ class GenericStockAdapter<T: FrozenColumnData>(
     ) : RecyclerView.ViewHolder(itemView) {
 
         fun bind(data: T) {
-            provider.bindFrozenViews(frozenViews, data, emptyList())
-            provider.bindScrollableViews(scrollViews, data, emptyList())
+            provider.bindRowFrozenViews(frozenViews, data, emptyList())
+            provider.bindRowScrollableViews(scrollViews, data, emptyList())
         }
 
         fun diffBind(data: T, payloads: List<Any?>) {
-            provider.bindFrozenViews(frozenViews, data, payloads)
-            provider.bindScrollableViews(scrollViews, data, payloads)
+            provider.bindRowFrozenViews(frozenViews, data, payloads)
+            provider.bindRowScrollableViews(scrollViews, data, payloads)
         }
 
     }

@@ -1,5 +1,6 @@
 package com.viifo.frozencolumnlist.demo.ui.fragment
 
+import android.graphics.Color
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -7,6 +8,7 @@ import android.view.ViewGroup
 import android.widget.Toast
 import androidx.fragment.app.Fragment
 import com.viifo.frozencolumnlist.data.FrozenHeaderData
+import com.viifo.frozencolumnlist.decoration.BoundDividerDecoration
 import com.viifo.frozencolumnlist.demo.R
 import com.viifo.frozencolumnlist.demo.data.StockModel
 import com.viifo.frozencolumnlist.demo.databinding.FragementWatchlistBinding
@@ -37,9 +39,17 @@ class WatchlistFragment: Fragment() {
     }
 
     private fun initView() {
-        mBinding?.frozenColumnList?.setProvider(StockColumnProvider())
-        mBinding?.frozenColumnList?.setHeaderData(mockStockHeaderData())
-        mBinding?.frozenColumnList?.onHeaderClickListener = { _, header ->
+        val provider = StockColumnProvider()
+        mBinding?.frozenColumnList?.setProvider(provider)
+        mBinding?.frozenColumnHeader?.setHeaderData(mockStockHeaderData(), provider)
+        mBinding?.frozenColumnList?.attachHeader(mBinding?.frozenColumnHeader)
+        mBinding?.frozenColumnList?.addItemDecoration(
+            BoundDividerDecoration(
+                context = context,
+                dividerColor = context?.getColor(R.color.divider_2) ?: Color.GRAY
+            )
+        )
+        mBinding?.frozenColumnHeader?.onHeaderClickListener = { _, header ->
             Toast.makeText(requireContext(), "点击了${header?.name}", Toast.LENGTH_SHORT).show()
         }
     }

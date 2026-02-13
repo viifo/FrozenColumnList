@@ -14,4 +14,4 @@ data class StockModel(
     val turnover: String,    // 换手率
     val marketCap: String,      // 总市值
     val circulatingCap: String, // 流通市值
-) : FrozenColumnData(code)
+) : FrozenColumnData(code, 10)

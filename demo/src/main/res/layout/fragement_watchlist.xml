@@ -1,45 +1,62 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout
+<androidx.appcompat.widget.LinearLayoutCompat
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:orientation="vertical">
 
-    <androidx.appcompat.widget.AppCompatTextView
-        android:id="@+id/tv_tab_watchlist"
-        android:layout_width="wrap_content"
+    <androidx.appcompat.widget.LinearLayoutCompat
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="自选"
-        android:textSize="18sp"
-        android:textStyle="bold"
-        android:textColor="@color/black"
-        android:padding="12dp"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        tools:ignore="HardcodedText" />
+        android:orientation="horizontal"
+        android:paddingTop="30dp"
+        android:background="@color/white">
 
-    <androidx.appcompat.widget.AppCompatTextView
-        android:id="@+id/tv_tab_positions"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="持仓"
-        android:textSize="16sp"
-        android:textColor="@color/gray"
-        android:padding="12dp"
-        app:layout_constraintStart_toEndOf="@id/tv_tab_watchlist"
-        app:layout_constraintBottom_toBottomOf="@id/tv_tab_watchlist"
-        tools:ignore="HardcodedText" />
+        <androidx.appcompat.widget.AppCompatTextView
+            android:id="@+id/tv_tab_watchlist"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="自选"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:textColor="@color/black"
+            android:padding="12dp"
+            tools:ignore="HardcodedText" />
+
+        <androidx.appcompat.widget.AppCompatTextView
+            android:id="@+id/tv_tab_positions"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="持仓"
+            android:textSize="16sp"
+            android:textColor="@color/gray"
+            android:padding="12dp"
+            tools:ignore="HardcodedText" />
+
+    </androidx.appcompat.widget.LinearLayoutCompat>
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1px"
+        android:background="@color/divider"/>
+
+    <com.viifo.frozencolumnlist.FrozenColumnHeader
+        android:id="@+id/frozen_column_header"
+        android:layout_width="match_parent"
+        android:layout_height="35dp"
+        android:background="@color/white"
+        app:itemGravity="center_vertical"/>
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1px"
+        android:background="@color/divider"/>
 
     <com.viifo.frozencolumnlist.FrozenColumnList
         android:id="@+id/frozen_column_list"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:layout_marginTop="50dp"
-        android:paddingHorizontal="12dp"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintBottom_toBottomOf="parent"/>
+        android:layout_height="match_parent"/>
 
-</androidx.constraintlayout.widget.ConstraintLayout>
+</androidx.appcompat.widget.LinearLayoutCompat>

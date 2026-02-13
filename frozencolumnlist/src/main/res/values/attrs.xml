@@ -1,6 +1,28 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <declare-styleable name="FrozenColumnHeader">
+        <!-- item 视图是否占满高度, 默认值为 true -->
+        <attr name="itemFullHeight" format="boolean" />
+        <!-- item 视图宽度，默认值为 120dp -->
+        <attr name="itemWidth" format="dimension" />
+        <!-- item 视图对齐方式, 默认值为 start | top -->
+        <attr name="itemGravity">
+            <flag name="top" value="0x30" />
+            <flag name="bottom" value="0x50" />
+            <flag name="left" value="0x03" />
+            <flag name="right" value="0x05" />
+            <flag name="center_vertical" value="0x10" />
+            <flag name="start" value="0x00800003" />
+            <flag name="end" value="0x00800005" />
+        </attr>
+    </declare-styleable>
+
     <declare-styleable name="FrozenColumnList">
-        <attr name="frozenColumnCount" format="integer" />
+        <!-- 越界回弹阻尼系数，默认值为 0.6f -->
+        <attr name="overScrollDamping" format="float" />
+        <!-- 越界回弹动画触发阈值，默认值为 10dp -->
+        <attr name="overScrollAnimatorThreshold" format="dimension" />
+        <!-- 最大越界回弹阈值，默认值为 80dp -->
+        <attr name="maxOverScrollThreshold" format="dimension" />
     </declare-styleable>
 </resources>
