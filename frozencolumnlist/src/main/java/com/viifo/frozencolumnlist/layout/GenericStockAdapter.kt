@@ -35,7 +35,7 @@ class GenericStockAdapter<T: FrozenColumnData>(
         frozenViews.forEachIndexed { index, view ->
             rowContainer.addView(
                 view,
-                viewWidths.getOrNull(index) ?: parent.context.dp2px(FrozenColumConfig.DEFAULT_COLUMN_WITH_DP),
+                viewWidths.getOrNull(index) ?: parent.context.dp2px(FrozenColumConfig.DEFAULT_FROZEN_COLUMN_WITH_DP),
                 ViewGroup.LayoutParams.MATCH_PARENT
             )
         }

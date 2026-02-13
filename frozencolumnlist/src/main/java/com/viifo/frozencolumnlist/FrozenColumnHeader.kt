@@ -1,6 +1,5 @@
 package com.viifo.frozencolumnlist
 
-import android.annotation.SuppressLint
 import android.content.Context
 import android.util.AttributeSet
 import android.view.Gravity
@@ -23,7 +22,7 @@ class FrozenColumnHeader @JvmOverloads constructor(
 ) : LinearLayoutCompat(context, attrs, defStyleAttr) {
 
     /** 表头点击事件 */
-    var onHeaderClickListener: ((view: View, header: FrozenHeaderData?) -> Unit)? = null
+    var onHeaderClickListener: ((view: View, position: Int) -> Unit)? = null
     /** 表头数据 */
     val headerData: MutableList<FrozenHeaderData> = mutableListOf()
 
@@ -37,23 +36,27 @@ class FrozenColumnHeader @JvmOverloads constructor(
     /** 视图是否充满父容器高度 */
     var itemFullHeight: Boolean = true
 
-    /** 视图宽度, 默认值为 120dp */
+    /** 视图宽度, 默认值为 80dp */
     var itemWidth: Int = LayoutParams.WRAP_CONTENT
+
+    /** 冻结(固定)视图宽度, 默认值为 120dp */
+    var itemFrozenWidth: Int = LayoutParams.WRAP_CONTENT
 
     /** 冻结(固定)列数量 */
     private var frozenColumnCount: Int = 1
 
+    /** 列视图提供器 */
+    private var provider: ColumnProvider<out FrozenColumnData>? = null
+
     /**
-     * 刷新表头，通常在表头数据发生变化但是表头数量没有发生变化时使用
-     * 如果表头数量发生变化，请使用 [setHeaderData] 方法, 并使用 [FrozenColumnList.rebuildList] 方法刷新列表
-     *
-     * @param headerData 表头数据
+     * 刷新单个表头数据，
+     * @param position 需要刷新的表头位置
+     * @param item 新的表头数据
      */
-    @Suppress("UNCHECKED_CAST")
-    @SuppressLint("NotifyDataSetChanged")
-    fun refreshHeader(headerData: List<FrozenHeaderData>) {
-        if (childCount <= 0) return
-        // TODO ... 刷新表头
+    fun refreshHeader(position: Int, item: FrozenHeaderData) {
+        if (childCount <= 0 || position < 0 || position >= headerData.size) return
+        this.headerData[position] = item
+        provider?.bindScrollableHeaderView(getChildAt(position), item)
     }
 
     /**
@@ -65,17 +68,24 @@ class FrozenColumnHeader @JvmOverloads constructor(
         data: List<FrozenHeaderData>,
         provider: ColumnProvider<out FrozenColumnData>
     ) {
+        this.provider = provider
         headerData.clear()
         headerData.addAll(data)
         frozenColumnCount = provider.getFrozenColumnCount()
         // 初始化表头
         val frozenHeaders = provider.createFrozenHeader(
-            this,
-            headerData.take(frozenColumnCount)
+            parent = this,
+            size = frozenColumnCount,
+            onClick = { view, position ->
+                onHeaderClickListener?.invoke(view, position)
+            }
         )
         val scrollHeaders = provider.createScrollableHeader(
-            this,
-            headerData.takeLast(headerData.size - frozenColumnCount)
+            parent = this,
+            size = headerData.size - frozenColumnCount,
+            onClick = { view, position ->
+                onHeaderClickListener?.invoke(view, frozenColumnCount + position)
+            }
         )
         val viewWidths = provider.getColumnWidths(this, headerData.size)
         initHeader(frozenHeaders, scrollHeaders, viewWidths)
@@ -94,27 +104,18 @@ class FrozenColumnHeader @JvmOverloads constructor(
     ) {
         removeAllViews()
         frozenHeaders?.forEachIndexed { index, view ->
-            view.setOnClickListener {
-                onHeaderClickListener?.invoke(
-                    it, headerData.getOrNull(index)
-                )
-            }
+            provider?.bindFrozenHeaderView(view, headerData.getOrNull(index))
             addView(
                 view,
-                viewWidths?.getOrNull(index) ?: itemWidth,
+                viewWidths?.getOrNull(index) ?: itemFrozenWidth,
                 if (itemFullHeight) LayoutParams.MATCH_PARENT else LayoutParams.WRAP_CONTENT
             )
         }
-        val frozenHeaderSize = frozenHeaders?.size ?: 0
         scrollHeaders?.forEachIndexed { index, view ->
-            view.setOnClickListener {
-                onHeaderClickListener?.invoke(
-                    it, headerData.getOrNull(frozenHeaderSize + index)
-                )
-            }
+            provider?.bindScrollableHeaderView(view, headerData.getOrNull(frozenColumnCount + index))
             addView(
                 view,
-                viewWidths?.getOrNull(frozenHeaderSize + index) ?: itemWidth,
+                viewWidths?.getOrNull(frozenColumnCount + index) ?: itemWidth,
                 if (itemFullHeight) LayoutParams.MATCH_PARENT else LayoutParams.WRAP_CONTENT
             )
         }
@@ -132,6 +133,10 @@ class FrozenColumnHeader @JvmOverloads constructor(
             itemWidth = getDimensionPixelSize(
                 R.styleable.FrozenColumnHeader_itemWidth,
                 context.dp2px(FrozenColumConfig.DEFAULT_COLUMN_WITH_DP)
+            )
+            itemFrozenWidth = getDimensionPixelSize(
+                R.styleable.FrozenColumnHeader_itemFrozenWidth,
+                context.dp2px(FrozenColumConfig.DEFAULT_FROZEN_COLUMN_WITH_DP)
             )
         }
     }

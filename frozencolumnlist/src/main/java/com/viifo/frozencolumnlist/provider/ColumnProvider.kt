@@ -1,14 +1,23 @@
 package com.viifo.frozencolumnlist.provider
 
+import android.graphics.Color
+import android.util.TypedValue
+import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
+import androidx.appcompat.widget.AppCompatTextView
+import com.viifo.frozencolumnlist.R
 import com.viifo.frozencolumnlist.data.FrozenColumnData
 import com.viifo.frozencolumnlist.data.FrozenHeaderData
+import com.viifo.frozencolumnlist.data.SortDirection
+import com.viifo.frozencolumnlist.ext.dp2px
 
 /**
  * 列视图提供器接口
  * 为了性能考虑，应该使用代码创建 View 而不是 XML 布局,
  * 获取 item view 列表的好处在于可以自定义每一个 item 的布局
+ *
+ * @param T 列数据模型类型
  */
 interface ColumnProvider<T : FrozenColumnData> {
 
@@ -24,23 +33,96 @@ interface ColumnProvider<T : FrozenColumnData> {
      * @param size 数据项数量
      * @return 各列宽度列表
      */
-     fun getColumnWidths(parent: ViewGroup, size: Int): List<Int>
+     fun getColumnWidths(parent: ViewGroup, size: Int): List<Int> = emptyList()
 
     /**
      * 创建固定列的表头子 View 列表
-     * @param parent 固定列表头容器
-     * @param data 表头数据
+     * @param parent 表头容器
+     * @param size 数量
+     * @param onClick 点击回调, 为空时表示不处理点击事件
      * @return 固定列的表头子 View 列表
      */
-    fun createFrozenHeader(parent: ViewGroup, data: List<FrozenHeaderData>): List<View>
+    fun createFrozenHeader(
+        parent: ViewGroup,
+        size: Int,
+        onClick: ((View, Int) -> Unit)?
+    ): List<View> {
+        return (0 until size).map { index ->
+            AppCompatTextView(parent.context).also {
+                it.setTextColor(Color.GRAY)
+                it.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
+                it.gravity = Gravity.START or Gravity.CENTER_VERTICAL
+                it.setPadding(
+                    parent.context.dp2px(12),
+                    0,
+                    parent.context.dp2px(8),
+                    0
+                )
+                it.compoundDrawablePadding = parent.context.dp2px(2)
+                it.setOnClickListener { view -> onClick?.invoke(view, index) }
+            }
+        }
+    }
 
     /**
      * 创建可滚动列表头子 View 列表
-     * @param parent 固定列表头容器
-     * @param data 表头数据
+     * @param parent 表头容器
+     * @param size 数量
+     * onClick: ((View, Int) -> Unit)?
      * @return 可滚动列表头子 View 列表
      */
-    fun createScrollableHeader(parent: ViewGroup, data: List<FrozenHeaderData>): List<View>
+    fun createScrollableHeader(
+        parent: ViewGroup,
+        size: Int,
+        onClick: ((View, Int) -> Unit)?
+    ): List<View> {
+        return (0 until size).map { index ->
+            AppCompatTextView(parent.context).also {
+                it.setTextColor(Color.GRAY)
+                it.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
+                it.gravity = Gravity.END or Gravity.CENTER_VERTICAL
+                it.setPadding(
+                    parent.context.dp2px(12),
+                    0,
+                    parent.context.dp2px(if (index == size - 1) 12 else 8),
+                    0
+                )
+                it.compoundDrawablePadding = parent.context.dp2px(2)
+                it.setOnClickListener { view -> onClick?.invoke(view, index) }
+            }
+        }
+    }
+
+    /**
+     * 绑定固定列表头数据到对应的表头 View
+     * @param view 固定列的表头 View 列表
+     * @param data 固定列表头对应的数据列表
+     */
+    fun bindFrozenHeaderView(view: View, data: FrozenHeaderData?) {
+        (view as? AppCompatTextView)?.text = data?.name
+    }
+
+    /**
+     * 绑定可滚动列表头数据到对应的表头 View
+     * @param view 可滚动列的表头 View 列表
+     * @param data 可滚动列表头对应的数据列表
+     */
+    fun bindScrollableHeaderView(view: View, data: FrozenHeaderData?) {
+        (view as? AppCompatTextView)?.let { textView ->
+            textView.text = data?.name
+            textView.setCompoundDrawablesWithIntrinsicBounds(
+                0,
+                0,
+                when (data?.sort) {
+                    SortDirection.None -> R.drawable.ic_sort_none
+                    SortDirection.Asc -> R.drawable.ic_sort_asc
+                    SortDirection.Desc -> R.drawable.ic_sort_desc
+                    else -> 0
+                },
+                0
+            )
+        }
+    }
 
     /**
      * 创建每行的 View 容器

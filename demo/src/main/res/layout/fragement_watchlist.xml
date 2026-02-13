@@ -18,20 +18,10 @@
             android:id="@+id/tv_tab_watchlist"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="自选"
+            android:text="自选一"
             android:textSize="18sp"
             android:textStyle="bold"
             android:textColor="@color/black"
-            android:padding="12dp"
-            tools:ignore="HardcodedText" />
-
-        <androidx.appcompat.widget.AppCompatTextView
-            android:id="@+id/tv_tab_positions"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="持仓"
-            android:textSize="16sp"
-            android:textColor="@color/gray"
             android:padding="12dp"
             tools:ignore="HardcodedText" />
 

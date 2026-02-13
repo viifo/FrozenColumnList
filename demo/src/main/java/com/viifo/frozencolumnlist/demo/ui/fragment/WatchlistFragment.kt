@@ -8,10 +8,12 @@ import android.view.ViewGroup
 import android.widget.Toast
 import androidx.fragment.app.Fragment
 import com.viifo.frozencolumnlist.data.FrozenHeaderData
+import com.viifo.frozencolumnlist.data.SortDirection
 import com.viifo.frozencolumnlist.decoration.BoundDividerDecoration
 import com.viifo.frozencolumnlist.demo.R
 import com.viifo.frozencolumnlist.demo.data.StockModel
 import com.viifo.frozencolumnlist.demo.databinding.FragementWatchlistBinding
+import com.viifo.frozencolumnlist.demo.ui.StockColumnProvider
 
 /**
  * 自选列表Fragment
@@ -19,6 +21,7 @@ import com.viifo.frozencolumnlist.demo.databinding.FragementWatchlistBinding
 class WatchlistFragment: Fragment() {
 
     private var mBinding: FragementWatchlistBinding? = null
+    private var stockList: List<StockModel> = emptyList()
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -49,13 +52,66 @@ class WatchlistFragment: Fragment() {
                 dividerColor = context?.getColor(R.color.divider_2) ?: Color.GRAY
             )
         )
-        mBinding?.frozenColumnHeader?.onHeaderClickListener = { _, header ->
-            Toast.makeText(requireContext(), "点击了${header?.name}", Toast.LENGTH_SHORT).show()
+        mBinding?.frozenColumnHeader?.onHeaderClickListener = { _, index ->
+            // 点击表头排序
+            mBinding?.frozenColumnHeader?.headerData?.let { list ->
+                val item = list.getOrNull(index)?.takeIf { it.sort != null } ?: return@let
+                // 先恢复上一个 header 状态
+                val prevItemIndex = list.indexOfFirst { it.sort != null && it.sort != SortDirection.None }
+                if (prevItemIndex > -1) {
+                    // 刷新上一个 header 状态
+                    mBinding?.frozenColumnHeader?.refreshHeader(
+                        prevItemIndex,
+                        list[prevItemIndex].copy(sort = SortDirection.None)
+                    )
+                }
+                // 刷新当前点击 header 状态
+                val current = item.copy(
+                    sort = switchSortDirection(item.sort ?: SortDirection.None)
+                )
+                mBinding?.frozenColumnHeader?.refreshHeader(index, current)
+                sortStockData(current)
+            }
         }
     }
 
     private fun initData() {
-        mBinding?.frozenColumnList?.submitList(mockStockData())
+        stockList = mockStockData()
+        mBinding?.frozenColumnList?.submitList(stockList)
+    }
+
+    /**
+     * 对股票数据进行排序
+     */
+    private fun sortStockData(header: FrozenHeaderData) {
+        if (header.sort == null) return
+        val selector: (StockModel) -> Float = {
+            when (header.id) {
+                2 -> it.price.toFloat()
+                3 -> it.changePercent.drop(1).dropLast(1).toFloat()
+                4 -> it.changeAmount.toFloat()
+                5 -> it.preClose.toFloat()
+                6 -> it.volume.dropLast(1).toFloat()
+                else -> 0f
+            }
+        }
+        stockList = if (header.sort == SortDirection.Asc) {
+            stockList.sortedBy(selector)
+        } else {
+            stockList.sortedByDescending(selector)
+        }
+        mBinding?.frozenColumnList?.submitList(stockList)
+    }
+
+    /**
+     * 切换三状态排序方向
+     */
+    private fun switchSortDirection(sourceDir: SortDirection): SortDirection {
+        return when (sourceDir) {
+            SortDirection.None -> SortDirection.Asc    // 默认 → 升序
+            SortDirection.Asc -> SortDirection.Desc    // 升序 → 降序
+            SortDirection.Desc -> SortDirection.None   // 降序 → 默认
+        }
     }
 
     /**
@@ -89,39 +145,48 @@ class WatchlistFragment: Fragment() {
             ),
             FrozenHeaderData(
                 id = 2,
-                name = context?.getString(R.string.stock_price)
+                name = context?.getString(R.string.stock_price),
+                sort = SortDirection.None
             ),
             FrozenHeaderData(
                 id = 3,
-                name = context?.getString(R.string.stock_change)
+                name = context?.getString(R.string.stock_change),
+                sort = SortDirection.None
             ),
             FrozenHeaderData(
                 id = 4,
-                name = context?.getString(R.string.stock_change_amount)
+                name = context?.getString(R.string.stock_change_amount),
+                sort = SortDirection.None
             ),
             FrozenHeaderData(
                 id = 5,
-                name = context?.getString(R.string.stock_close_price)
+                name = context?.getString(R.string.stock_close_price),
+                sort = SortDirection.None
             ),
             FrozenHeaderData(
                 id = 6,
-                name = context?.getString(R.string.stock_volume)
+                name = context?.getString(R.string.stock_volume),
+                sort = SortDirection.None
             ),
             FrozenHeaderData(
                 id = 7,
-                name = context?.getString(R.string.stock_amplitude)
+                name = context?.getString(R.string.stock_amplitude),
+                sort = null, // 此字段不排序
             ),
             FrozenHeaderData(
                 id = 8,
-                name = context?.getString(R.string.stock_turnover)
+                name = context?.getString(R.string.stock_turnover),
+                sort = null, // 此字段不排序
             ),
             FrozenHeaderData(
                 id = 9,
-                name = context?.getString(R.string.stock_market_cap)
+                name = context?.getString(R.string.stock_market_cap),
+                sort = null, // 此字段不排序
             ),
             FrozenHeaderData(
                 id = 10,
-                name = context?.getString(R.string.stock_circulating_cap)
+                name = context?.getString(R.string.stock_circulating_cap),
+                sort = null, // 此字段不排序
             ),
         )
     }

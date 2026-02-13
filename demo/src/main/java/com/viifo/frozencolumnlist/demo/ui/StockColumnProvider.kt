@@ -1,6 +1,5 @@
-package com.viifo.frozencolumnlist.demo.ui.fragment
+package com.viifo.frozencolumnlist.demo.ui
 
-import android.content.Context
 import android.graphics.Color
 import android.util.TypedValue
 import android.view.Gravity
@@ -9,7 +8,6 @@ import android.view.ViewGroup
 import androidx.appcompat.widget.AppCompatTextView
 import androidx.appcompat.widget.LinearLayoutCompat
 import androidx.recyclerview.widget.RecyclerView
-import com.viifo.frozencolumnlist.data.FrozenHeaderData
 import com.viifo.frozencolumnlist.demo.R
 import com.viifo.frozencolumnlist.demo.data.StockModel
 import com.viifo.frozencolumnlist.demo.ext.dp2px
@@ -26,31 +24,9 @@ class StockColumnProvider : ColumnProvider<StockModel> {
                 // 第一列 (固定) 宽度为120dp
                 parent.context.dp2px(120)
             } else {
-                // 其他列 (可滚动) 宽度为90dp
-                parent.context.dp2px(90)
+                // 其他列 (可滚动) 宽度为80dp
+                parent.context.dp2px(80)
             }
-        }
-    }
-
-    override fun createFrozenHeader(parent: ViewGroup, data: List<FrozenHeaderData>): List<View> {
-        return (0 until data.size).map {
-            createHeaderView(
-                context = parent.context,
-                gravity = Gravity.START or Gravity.CENTER_VERTICAL,
-                text = data[it].name,
-                paddingStart = parent.context.dp2px(12),
-                paddingEnd = parent.context.dp2px(8),
-            )
-        }
-    }
-
-    override fun createScrollableHeader(parent: ViewGroup, data: List<FrozenHeaderData>): List<View> {
-        return (0 until data.size).map { index ->
-            createHeaderView(
-                context = parent.context,
-                text = data[index].name,
-                paddingEnd = parent.context.dp2px(if (index == data.size - 1) 12 else 8),
-            )
         }
     }
 
@@ -104,7 +80,7 @@ class StockColumnProvider : ColumnProvider<StockModel> {
                 it.setPadding(
                     0,
                     0,
-                    parent.context.dp2px(if (index == size - 1) 12 else 8),
+                    parent.context.dp2px(if (index == size - 1) 14 else 10),
                     0
                 )
                 it.setBackgroundColor(Color.WHITE)
@@ -137,19 +113,4 @@ class StockColumnProvider : ColumnProvider<StockModel> {
         (views.getOrNull(8) as? AppCompatTextView)?.text = data.marketCap
     }
 
-    private fun createHeaderView(
-        context: Context,
-        text: String?,
-        gravity: Int = Gravity.END or Gravity.CENTER_VERTICAL,
-        paddingStart: Int = 0,
-        paddingEnd: Int = 0,
-    ): AppCompatTextView {
-        return AppCompatTextView(context).also {
-            it.text = text
-            it.setTextColor(Color.GRAY)
-            it.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
-            it.gravity = gravity
-            it.setPadding(paddingStart, 0, paddingEnd, 0)
-        }
-    }
 }

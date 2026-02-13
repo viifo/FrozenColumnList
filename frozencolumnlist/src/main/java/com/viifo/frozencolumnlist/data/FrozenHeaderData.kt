@@ -9,6 +9,14 @@ open class FrozenHeaderData(
     open val sort: SortDirection? = null, // 排序方向，null 表示不支持排序
 ) {
 
+    fun copy(
+        id: Int? = this.id,
+        name: String? = this.name,
+        sort: SortDirection? = this.sort,
+    ): FrozenHeaderData {
+        return FrozenHeaderData(id, name, sort)
+    }
+
     override fun equals(other: Any?): Boolean {
         return (other is FrozenHeaderData) && (other.id == this.id) && (other.sort == this.sort)
     }

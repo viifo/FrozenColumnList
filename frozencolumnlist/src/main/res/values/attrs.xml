@@ -3,7 +3,9 @@
     <declare-styleable name="FrozenColumnHeader">
         <!-- item 视图是否占满高度, 默认值为 true -->
         <attr name="itemFullHeight" format="boolean" />
-        <!-- item 视图宽度，默认值为 120dp -->
+        <!-- item 冻结(固定)视图宽度，默认值为 120dp -->
+        <attr name="itemFrozenWidth" format="dimension" />
+        <!-- item 非冻结(可滚动)视图宽度，默认值为 80dp -->
         <attr name="itemWidth" format="dimension" />
         <!-- item 视图对齐方式, 默认值为 start | top -->
         <attr name="itemGravity">
