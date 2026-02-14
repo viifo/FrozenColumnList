@@ -3,6 +3,7 @@ package com.viifo.frozencolumnlist
 import android.content.Context
 import android.util.AttributeSet
 import android.view.MotionEvent
+import android.view.ViewConfiguration
 import androidx.core.content.withStyledAttributes
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
@@ -65,6 +66,17 @@ class FrozenColumnList @JvmOverloads constructor(
     private var provider: ColumnProvider<out FrozenColumnData>? = null
     private var genericStockAdapter: GenericStockAdapter<out FrozenColumnData>? = null
     private var frozenColumnLayoutManager: FrozenColumnLayoutManager? = null
+
+    /** 触发阈值（像素） */
+    private val touchSlop by lazy { ViewConfiguration.get(context).scaledTouchSlop }
+    /** 是否已处理触摸冲突解决策略 */
+    private var setupTouchConflictResolution = false
+    /** 最大越界距离（像素, 默认 80dp） */
+    private var prevMaxOverScrollThreshold = context.dp2px(80)
+
+    /** 记录触摸事件的初始坐标 */
+    private var startX = 0f
+    private var startY = 0f
 
     /**
      * 设置 Adapter 并绑定数据
@@ -153,50 +165,28 @@ class FrozenColumnList @JvmOverloads constructor(
      * 获取适配器
      */
     fun getFrozenColumnAdapter(): GenericStockAdapter<out FrozenColumnData>? {
-        return getFrozenColumnAdapter() ?: (adapter as? GenericStockAdapter<out FrozenColumnData>)
+        return genericStockAdapter ?: (adapter as? GenericStockAdapter<out FrozenColumnData>)
     }
 
     /**
      * 处理 ViewPager2 嵌套冲突
      */
-    private fun setupTouchConflictResolution() {
-        addOnItemTouchListener(object : SimpleOnItemTouchListener() {
-            private var startX = 0f
-            private var startY = 0f
-
-            override fun onInterceptTouchEvent(rv: RecyclerView, e: MotionEvent): Boolean {
-                when (e.action) {
-                    MotionEvent.ACTION_DOWN -> {
-                        startX = e.x
-                        startY = e.y
-                        // 告知父容器：先不要拦截，我可能需要滑动
-                        rv.parent.requestDisallowInterceptTouchEvent(true)
-                    }
-                    MotionEvent.ACTION_MOVE -> {
-                        val dx = abs(e.x - startX)
-                        val dy = abs(e.y - startY)
-
-                        // 如果横滑趋势明显，锁定在当前 View 响应，不让 ViewPager2 翻页
-                        if (dx > dy && dx > 10f) {
-                            rv.parent.requestDisallowInterceptTouchEvent(true)
-                        } else if (dy > dx) {
-                            // 纵滑时交给原生处理
-                            rv.parent.requestDisallowInterceptTouchEvent(false)
-                        }
-                    }
-                }
-                return false
+    fun setupTouchConflictResolution(value: Boolean) {
+        if (value) {
+            getFrozenColumnLayoutManager()?.let {
+                prevMaxOverScrollThreshold = it.maxOverScrollThreshold
+                it.maxOverScrollThreshold = 0
             }
-        })
+        } else {
+            getFrozenColumnLayoutManager()?.maxOverScrollThreshold = prevMaxOverScrollThreshold
+        }
+        setupTouchConflictResolution = value
     }
 
     /**
      * 初始化 View
      */
     private fun initView() {
-        // 处理 ViewPager2 嵌套冲突
-        // setupTouchConflictResolution()
-        // 初始化 recyclerView 并添加到根布局
         layoutManager = FrozenColumnLayoutManager(context).also { frozenColumnLayoutManager = it }
         setHasFixedSize(true)
         overScrollMode = OVER_SCROLL_NEVER
@@ -234,6 +224,50 @@ class FrozenColumnList @JvmOverloads constructor(
     override fun onDetachedFromWindow() {
         frozenColumnLayoutManager?.removeAllHorizontalScrollListener()
         super.onDetachedFromWindow()
+    }
+
+    /**
+     * 处理 ViewPager2 嵌套冲突
+     */
+    override fun dispatchTouchEvent(e: MotionEvent): Boolean {
+        if (!setupTouchConflictResolution){
+            return super.dispatchTouchEvent(e)
+        }
+        when (e.action) {
+            MotionEvent.ACTION_DOWN -> {
+                startX = e.x
+                startY = e.y
+                // 告知父容器：先不要拦截，我可能需要滑动
+                parent.requestDisallowInterceptTouchEvent(true)
+            }
+            MotionEvent.ACTION_MOVE -> {
+                val dx = e.x - startX
+                val dy = e.y - startY
+                if (abs(dx) > abs(dy) && abs(dx) > touchSlop) {
+                    // 横向滑动逻辑
+                    if (!canScrollHorizontally(if (dx > 0) -1 else 1)) {
+                        // 已经无法再滑动了
+                        parent.requestDisallowInterceptTouchEvent(false)
+                    } else {
+                        // 还能滑动，继续霸占事件
+                        parent.requestDisallowInterceptTouchEvent(true)
+                    }
+                } else if (abs(dy) > touchSlop) {
+                    // 纵向滑动逻辑
+                    if (!canScrollVertically(if (dy > 0) -1 else 1)) {
+                        // 已经无法再滑动了
+                        parent.requestDisallowInterceptTouchEvent(false)
+                    } else {
+                        // 还能滑动，继续霸占事件
+                        parent.requestDisallowInterceptTouchEvent(true)
+                    }
+                }
+            }
+            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                parent.requestDisallowInterceptTouchEvent(false)
+            }
+        }
+        return super.dispatchTouchEvent(e)
     }
 
 }

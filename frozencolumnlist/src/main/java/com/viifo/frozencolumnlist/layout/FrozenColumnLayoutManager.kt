@@ -72,7 +72,7 @@ class FrozenColumnLayoutManager(
     var canScrollHorizontally = true
 
     /** 是否支持水平滚动 */
-    override fun canScrollHorizontally(): Boolean = canScrollHorizontally
+    override fun canScrollHorizontally() = canScrollHorizontally
 
     /** 滚动状态改变 */
     override fun onScrollStateChanged(state: Int) {
@@ -183,7 +183,7 @@ class FrozenColumnLayoutManager(
 
     /** 内容总宽度（所有列加起来） */
     override fun computeHorizontalScrollRange(state: RecyclerView.State): Int {
-        return maxOf(maxScrollWidth, width)
+        return maxOf(maxScrollWidth + width, width)
     }
 
     /** 当前滚动的偏移量 */

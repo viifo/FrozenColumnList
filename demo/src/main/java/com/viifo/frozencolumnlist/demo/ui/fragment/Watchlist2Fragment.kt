@@ -10,7 +10,6 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import com.scwang.smart.refresh.footer.ClassicsFooter
 import com.scwang.smart.refresh.header.ClassicsHeader
-import com.scwang.smart.refresh.layout.listener.ScrollBoundaryDecider
 import com.viifo.frozencolumnlist.data.FrozenHeaderData
 import com.viifo.frozencolumnlist.data.SortDirection
 import com.viifo.frozencolumnlist.decoration.BoundDividerDecoration
@@ -55,19 +54,10 @@ class Watchlist2Fragment: Fragment() {
         mBinding?.refreshLayout?.setOnRefreshListener { refreshData() }
         mBinding?.refreshLayout?.setOnLoadMoreListener { loadMoreData() }
         mBinding?.refreshLayout?.setEnableAutoLoadMore(false)
-        // 解决refreshLayout 与 frozenColumnList 的滑动冲突
-        mBinding?.refreshLayout?.setScrollBoundaryDecider(object : ScrollBoundaryDecider {
-            override fun canRefresh(content: View?): Boolean {
-                // 无法再往下拉时，允许触发刷新
-                return mBinding?.frozenColumnList?.canScrollVertically(-1) == false
-            }
-            override fun canLoadMore(content: View?): Boolean {
-                // 无法再往上拉时，允许触发加载
-                return mBinding?.frozenColumnList?.canScrollVertically(1) == false
-            }
-        })
+        mBinding?.refreshLayout?.setEnableNestedScroll(false)
 
         // 初始化 FrozenColumnList
+        // mBinding?.frozenColumnList?.setupTouchConflictResolution(true)
         mBinding?.frozenColumnList?.attachHeader(mBinding?.frozenColumnHeader)
         mBinding?.frozenColumnList?.setItemAnimator(StockItemAnimator(requireContext()))
         mBinding?.frozenColumnList?.addItemDecoration(

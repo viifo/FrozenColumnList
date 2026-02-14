@@ -72,6 +72,7 @@ class Watchlist1Fragment: Fragment() {
         // 解决refreshLayout 与 frozenColumnList 的滑动冲突
         mBinding?.refreshLayout?.setEnableNestedScroll(false)
 //        // 或使用下面注释的代码， 解决refreshLayout 与 frozenColumnList 的滑动冲突
+//        // 但是如果没有关闭嵌套滚动，会导致在 frozenColumnList 水平滚动时，仍然可以触发 refreshLayout 的刷新或加载更多
 //        mBinding?.refreshLayout?.setScrollBoundaryDecider(object : ScrollBoundaryDecider {
 //            override fun canRefresh(content: View?): Boolean {
 //                // 无法再往下拉时，允许触发刷新
@@ -84,6 +85,7 @@ class Watchlist1Fragment: Fragment() {
 //        })
 
         // 初始化 FrozenColumnList
+        // mBinding?.frozenColumnList?.setupTouchConflictResolution(true)
         mBinding?.frozenColumnList?.attachHeader(mBinding?.frozenColumnHeader)
         mBinding?.frozenColumnList?.setItemAnimator(StockItemAnimator(requireContext()))
         mBinding?.frozenColumnList?.addItemDecoration(
