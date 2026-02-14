@@ -114,6 +114,22 @@ class FrozenColumnList @JvmOverloads constructor(
         }
     }
 
+    /**
+     * 手动同步表头滚动偏移量
+     */
+    fun syncHeaderOffset(header: FrozenColumnHeader?) {
+        header?.let {
+            layoutManager?.syncColumns(header)
+        }
+    }
+
+    /**
+     * 更新水平滚动偏移量
+     * @param newOffset 新的滚动偏移量
+     */
+    fun updateHorizontalOffset(newOffset: Int) {
+        layoutManager?.updateHorizontalOffset(newOffset)
+    }
 
     /**
      * 添加 ItemDecoration

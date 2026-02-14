@@ -18,7 +18,7 @@ import com.viifo.frozencolumnlist.demo.R
  */
 class StockItemAnimator(context: Context) : DefaultItemAnimator() {
 
-    var isShowUpdateAnimator: Boolean = false
+    var isShowUpdateAnimation = false
 
     private val backgrounds = listOf(
         context.getDrawable(R.drawable.bg_gray_equal),
@@ -28,13 +28,16 @@ class StockItemAnimator(context: Context) : DefaultItemAnimator() {
 
     override fun canReuseUpdatedViewHolder(viewHolder: RecyclerView.ViewHolder): Boolean = true
 
+    /**
+     * 处理股票列表项的更新动画
+     */
     override fun animateChange(
         oldHolder: RecyclerView.ViewHolder,
         newHolder: RecyclerView.ViewHolder,
         preInfo: ItemHolderInfo,
         postInfo: ItemHolderInfo
     ): Boolean {
-        if (isShowUpdateAnimator && oldHolder === newHolder) {
+        if (isShowUpdateAnimation && oldHolder === newHolder) {
             val itemView = newHolder.itemView as? ViewGroup
                 ?: return super.animateChange(oldHolder, newHolder, preInfo, postInfo)
             val changePercent = itemView

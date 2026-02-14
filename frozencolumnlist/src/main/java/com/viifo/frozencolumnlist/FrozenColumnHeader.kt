@@ -87,7 +87,10 @@ class FrozenColumnHeader @JvmOverloads constructor(
      * 处理触摸事件，同步列表滚动
      */
     override fun onTouchEvent(event: MotionEvent): Boolean {
-        onHorizontalScrollListener?.invoke(event)
+        onHorizontalScrollListener?.invoke(event) // 回调水平滚动事件
+        if (event.action == MotionEvent.ACTION_UP) {
+            performClick() // 处理点击事件分发
+        }
         return true
     }
 

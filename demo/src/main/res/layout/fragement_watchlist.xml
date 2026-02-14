@@ -25,6 +25,17 @@
             android:padding="12dp"
             tools:ignore="HardcodedText" />
 
+        <androidx.appcompat.widget.AppCompatTextView
+            android:id="@+id/tv_tab_positions"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="持仓一"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:textColor="@color/gray"
+            android:padding="12dp"
+            tools:ignore="HardcodedText" />
+
         <Space
             android:layout_width="0dp"
             android:layout_height="wrap_content"

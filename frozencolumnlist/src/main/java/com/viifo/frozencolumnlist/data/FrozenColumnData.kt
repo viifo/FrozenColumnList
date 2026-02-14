@@ -3,7 +3,7 @@ package com.viifo.frozencolumnlist.data
 /**
  * 列表数据基础模型
  * @param id 唯一标识
- * @param columnCount 列数量 (一行有多少列)
+ * @param columnCount 总列数量 (包括冻结(固定)列和可滚动列)
  */
 open class FrozenColumnData(
     open val id: String?,
@@ -11,10 +11,15 @@ open class FrozenColumnData(
 ) {
 
     override fun equals(other: Any?): Boolean {
-        return (other is FrozenColumnData) && (other.id == this.id)
+        return (other is FrozenColumnData)
+                && (other.id == this.id)
+                && (other.columnCount == this.columnCount)
     }
 
     override fun hashCode(): Int {
-        return id?.hashCode() ?: 0
+        var result = columnCount
+        result = 31 * result + (id?.hashCode() ?: 0)
+        return result
     }
+
 }

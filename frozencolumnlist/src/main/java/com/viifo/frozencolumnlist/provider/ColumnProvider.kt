@@ -1,16 +1,9 @@
 package com.viifo.frozencolumnlist.provider
 
-import android.graphics.Color
-import android.util.TypedValue
-import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
-import androidx.appcompat.widget.AppCompatTextView
-import com.viifo.frozencolumnlist.R
 import com.viifo.frozencolumnlist.data.FrozenColumnData
 import com.viifo.frozencolumnlist.data.FrozenHeaderData
-import com.viifo.frozencolumnlist.data.SortDirection
-import com.viifo.frozencolumnlist.ext.dp2px
 import com.viifo.frozencolumnlist.layout.GenericStockAdapter.GenericViewHolder
 
 /**
@@ -23,10 +16,10 @@ import com.viifo.frozencolumnlist.layout.GenericStockAdapter.GenericViewHolder
 interface ColumnProvider<T : FrozenColumnData> {
 
     /**
-     * 获取冻结(固定)列数量, 默认返回 1
+     * 获取冻结(固定)列数量
      * @return 冻结(固定)列数量
      */
-     fun getFrozenColumnCount(): Int = 1
+     fun getFrozenColumnCount(): Int
 
     /**
      * 获取各列宽度（像素）, 如果返回空列表, 则使用默认宽度
@@ -34,7 +27,7 @@ interface ColumnProvider<T : FrozenColumnData> {
      * @param size 数据项数量
      * @return 各列宽度列表
      */
-     fun getColumnWidths(parent: ViewGroup, size: Int): List<Int> = emptyList()
+     fun getColumnWidths(parent: ViewGroup, size: Int): List<Int>
 
     /**
      * 创建固定列的表头子 View 列表
@@ -47,23 +40,7 @@ interface ColumnProvider<T : FrozenColumnData> {
         parent: ViewGroup,
         size: Int,
         onClick: ((View, Int) -> Unit)?
-    ): List<View> {
-        return (0 until size).map { index ->
-            AppCompatTextView(parent.context).also {
-                it.setTextColor(Color.GRAY)
-                it.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
-                it.gravity = Gravity.START or Gravity.CENTER_VERTICAL
-                it.setPadding(
-                    parent.context.dp2px(12),
-                    0,
-                    parent.context.dp2px(8),
-                    0
-                )
-                it.compoundDrawablePadding = parent.context.dp2px(2)
-                it.setOnClickListener { view -> onClick?.invoke(view, index) }
-            }
-        }
-    }
+    ): List<View>
 
     /**
      * 创建可滚动列表头子 View 列表
@@ -76,54 +53,21 @@ interface ColumnProvider<T : FrozenColumnData> {
         parent: ViewGroup,
         size: Int,
         onClick: ((View, Int) -> Unit)?
-    ): List<View> {
-        return (0 until size).map { index ->
-            AppCompatTextView(parent.context).also {
-                it.setTextColor(Color.GRAY)
-                it.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
-                it.gravity = Gravity.END or Gravity.CENTER_VERTICAL
-                it.setPadding(
-                    parent.context.dp2px(12),
-                    0,
-                    parent.context.dp2px(if (index == size - 1) 12 else 8),
-                    0
-                )
-                it.compoundDrawablePadding = parent.context.dp2px(2)
-                it.setOnClickListener { view -> onClick?.invoke(view, index) }
-            }
-        }
-    }
+    ): List<View>
 
     /**
      * 绑定固定列表头数据到对应的表头 View
      * @param view 固定列的表头 View 列表
      * @param data 固定列表头对应的数据列表
      */
-    fun bindFrozenHeaderView(view: View, data: FrozenHeaderData?) {
-        (view as? AppCompatTextView)?.text = data?.name
-    }
+    fun bindFrozenHeaderView(view: View, data: FrozenHeaderData?)
 
     /**
      * 绑定可滚动列表头数据到对应的表头 View
      * @param view 可滚动列的表头 View 列表
      * @param data 可滚动列表头对应的数据列表
      */
-    fun bindScrollableHeaderView(view: View, data: FrozenHeaderData?) {
-        (view as? AppCompatTextView)?.let { textView ->
-            textView.text = data?.name
-            textView.setCompoundDrawablesWithIntrinsicBounds(
-                0,
-                0,
-                when (data?.sort) {
-                    SortDirection.None -> R.drawable.ic_sort_none
-                    SortDirection.Asc -> R.drawable.ic_sort_asc
-                    SortDirection.Desc -> R.drawable.ic_sort_desc
-                    else -> 0
-                },
-                0
-            )
-        }
-    }
+    fun bindScrollableHeaderView(view: View, data: FrozenHeaderData?)
 
     /**
      * 创建每行的 View 容器

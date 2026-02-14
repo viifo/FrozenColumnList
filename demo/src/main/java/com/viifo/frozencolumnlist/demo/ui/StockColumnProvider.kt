@@ -7,17 +7,16 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.appcompat.widget.AppCompatTextView
 import androidx.appcompat.widget.LinearLayoutCompat
-import androidx.recyclerview.widget.RecyclerView
 import com.viifo.frozencolumnlist.demo.R
 import com.viifo.frozencolumnlist.demo.data.StockModel
 import com.viifo.frozencolumnlist.demo.ext.dp2px
 import com.viifo.frozencolumnlist.layout.GenericStockAdapter
-import com.viifo.frozencolumnlist.provider.ColumnProvider
+import com.viifo.frozencolumnlist.provider.DefaultColumnProvider
 
 /**
- * 自定义股票列数据提供者
+ * 自定义股票持仓列表提供者
  */
-class StockColumnProvider : ColumnProvider<StockModel> {
+class StockColumnProvider : DefaultColumnProvider<StockModel>() {
 
     override fun getColumnWidths(parent: ViewGroup, size: Int): List<Int> {
         return (0 until size).map {
@@ -28,17 +27,6 @@ class StockColumnProvider : ColumnProvider<StockModel> {
                 // 其他列 (可滚动) 宽度为80dp
                 parent.context.dp2px(80)
             }
-        }
-    }
-
-    override fun createRowContainer(parent: ViewGroup): ViewGroup {
-        return LinearLayoutCompat(parent.context).apply {
-            layoutParams = RecyclerView.LayoutParams(
-                RecyclerView.LayoutParams.MATCH_PARENT,
-                RecyclerView.LayoutParams.WRAP_CONTENT
-            )
-            orientation = LinearLayoutCompat.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
         }
     }
 

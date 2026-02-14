@@ -88,7 +88,7 @@ class GenericStockAdapter<T: FrozenColumnData>(
         fun <V: View> getView(@IdRes id: Int): V = itemView.findViewById(id)
 
         fun setText(@IdRes id: Int, text: CharSequence?) {
-            itemView.findViewById<TextView>(id).text = text
+            itemView.findViewById<TextView>(id)?.text = text
         }
 
     }
