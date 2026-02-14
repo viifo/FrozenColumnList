@@ -77,10 +77,11 @@ class FrozenColumnList @JvmOverloads constructor(
     /**
      * 设置 Adapter 绑定的数据
      * @param list 数据列表
+     * @param commitCallback 提交完成回调
      */
     @Suppress("UNCHECKED_CAST")
-    fun <T: FrozenColumnData> submitList(list: List<T>) {
-        (adapter as? ListAdapter<T, *>)?.submitList(list)
+    fun <T: FrozenColumnData> submitList(list: List<T>, commitCallback: Runnable? = null) {
+        (adapter as? ListAdapter<T, *>)?.submitList(list, commitCallback)
     }
 
     /**
@@ -143,6 +144,34 @@ class FrozenColumnList @JvmOverloads constructor(
         animatorProvider: SpringBackAnimatorProvider?
     ) {
         layoutManager?.springBackAnimatorProvider = animatorProvider
+    }
+
+    /**
+     * 获取布局管理器
+     */
+    fun getLayoutManager(): FrozenColumnLayoutManager? {
+        return layoutManager ?: (recyclerView.layoutManager as? FrozenColumnLayoutManager)
+    }
+
+    /**
+     * 获取适配器
+     */
+    fun getAdapter(): GenericStockAdapter<out FrozenColumnData>? {
+        return adapter ?: (recyclerView.adapter as? GenericStockAdapter<out FrozenColumnData>)
+    }
+
+    /**
+     * 设置 ItemAnimator
+     */
+    fun setItemAnimator(animator: RecyclerView.ItemAnimator?) {
+        recyclerView.itemAnimator = animator
+    }
+
+    /**
+     * 获取 ItemAnimator
+     */
+    fun getItemAnimator(): RecyclerView.ItemAnimator? {
+        return recyclerView.itemAnimator
     }
 
     /**

@@ -11,6 +11,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.viifo.frozencolumnlist.demo.R
 import com.viifo.frozencolumnlist.demo.data.StockModel
 import com.viifo.frozencolumnlist.demo.ext.dp2px
+import com.viifo.frozencolumnlist.layout.GenericStockAdapter
 import com.viifo.frozencolumnlist.provider.ColumnProvider
 
 /**
@@ -70,10 +71,10 @@ class StockColumnProvider : ColumnProvider<StockModel> {
 
     override fun createRowScrollableViews(parent: ViewGroup, size: Int): List<View> {
         // 可滚动列 (动态设置，eg.这里设置 9 列)
-        return (0 until size).map { index ->
+        val typedArray = parent.context.resources.obtainTypedArray(R.array.column_ids)
+        val list = (0 until size).map { index ->
             AppCompatTextView(parent.context).also {
-                // 只有一个 view，不需要设置 id
-                // it.id = R.id.item_xxx
+                it.id = typedArray.getResourceId(index, View.NO_ID)
                 it.setTextColor(Color.BLACK)
                 it.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
                 it.gravity = Gravity.END or Gravity.CENTER_VERTICAL
@@ -86,31 +87,40 @@ class StockColumnProvider : ColumnProvider<StockModel> {
                 it.setBackgroundColor(Color.WHITE)
             }
         }
+        typedArray.recycle()
+        return list
     }
 
-    override fun bindRowFrozenViews(views: List<View>, data: StockModel, payloads: List<Any?>) {
+    override fun bindRowFrozenViews(
+        holder: GenericStockAdapter.GenericViewHolder<StockModel>,
+        data: StockModel,
+        payloads: List<Any?>
+    ) {
         // 固定列数据绑定
-        views.getOrNull(0)?.apply {
-            findViewById<AppCompatTextView>(R.id.item_tv_name).text = data.name
-            findViewById<AppCompatTextView>(R.id.item_tv_code).text = data.code
-        }
+        holder.setText(R.id.item_tv_name, data.name)
+        holder.setText(R.id.item_tv_code, data.code)
     }
 
-    override fun bindRowScrollableViews(views: List<View>, data: StockModel, payloads: List<Any?>) {
+    override fun bindRowScrollableViews(
+        holder: GenericStockAdapter.GenericViewHolder<StockModel>,
+        data: StockModel,
+        payloads: List<Any?>
+    ) {
         // 可滚动列数据绑定
-        (views.getOrNull(0) as? AppCompatTextView)?.text = data.price
-        (views.getOrNull(1) as? AppCompatTextView)?.let {
-            it.text = data.changePercent
+        holder.setText(R.id.item_tv_price, data.price)
+        holder.setText(R.id.item_tv_change, data.changePercent)
+        holder.getView<AppCompatTextView>(R.id.item_tv_change).apply {
+            text = data.changePercent
             // 简单的涨跌颜色逻辑
-            it.setTextColor(if (data.changePercent.contains("+")) Color.RED else Color.GREEN)
+            setTextColor(if (data.changePercent.contains("+")) Color.RED else Color.GREEN)
         }
-        (views.getOrNull(2) as? AppCompatTextView)?.text = data.changeAmount
-        (views.getOrNull(3) as? AppCompatTextView)?.text = data.preClose
-        (views.getOrNull(4) as? AppCompatTextView)?.text = data.volume
-        (views.getOrNull(5) as? AppCompatTextView)?.text = data.amplitude
-        (views.getOrNull(6) as? AppCompatTextView)?.text = data.amplitude
-        (views.getOrNull(7) as? AppCompatTextView)?.text = data.turnover
-        (views.getOrNull(8) as? AppCompatTextView)?.text = data.marketCap
+        holder.setText(R.id.item_tv_change_amount, data.changeAmount)
+        holder.setText(R.id.item_tv_prev_close, data.preClose)
+        holder.setText(R.id.item_tv_volume, data.volume)
+        holder.setText(R.id.item_tv_amplitude, data.amplitude)
+        holder.setText(R.id.item_tv_turnover, data.turnover)
+        holder.setText(R.id.item_tv_market_cap, data.marketCap)
+        holder.setText(R.id.item_tv_circulating_cap, data.circulatingCap)
     }
 
 }

@@ -2,6 +2,8 @@ package com.viifo.frozencolumnlist.layout
 
 import android.view.View
 import android.view.ViewGroup
+import android.widget.TextView
+import androidx.annotation.IdRes
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
@@ -47,12 +49,7 @@ class GenericStockAdapter<T: FrozenColumnData>(
             )
         }
         // 返回 ViewHolder
-        return GenericViewHolder(
-            itemView = rowContainer,
-            frozenViews = frozenViews,
-            scrollViews = scrollViews,
-            provider = provider
-        )
+        return GenericViewHolder(itemView = rowContainer, provider = provider)
     }
 
     override fun onBindViewHolder(holder: GenericViewHolder<T>, position: Int) {
@@ -75,19 +72,23 @@ class GenericStockAdapter<T: FrozenColumnData>(
 
     class GenericViewHolder<T: FrozenColumnData>(
         itemView: View,
-        private val frozenViews: List<View>,
-        private val scrollViews: List<View>,
         private val provider: ColumnProvider<T>
     ) : RecyclerView.ViewHolder(itemView) {
 
         fun bind(data: T) {
-            provider.bindRowFrozenViews(frozenViews, data, emptyList())
-            provider.bindRowScrollableViews(scrollViews, data, emptyList())
+            provider.bindRowFrozenViews(this, data, emptyList())
+            provider.bindRowScrollableViews(this, data, emptyList())
         }
 
         fun diffBind(data: T, payloads: List<Any?>) {
-            provider.bindRowFrozenViews(frozenViews, data, payloads)
-            provider.bindRowScrollableViews(scrollViews, data, payloads)
+            provider.bindRowFrozenViews(this, data, payloads)
+            provider.bindRowScrollableViews(this, data, payloads)
+        }
+
+        fun <V: View> getView(@IdRes id: Int): V = itemView.findViewById(id)
+
+        fun setText(@IdRes id: Int, text: CharSequence?) {
+            itemView.findViewById<TextView>(id).text = text
         }
 
     }

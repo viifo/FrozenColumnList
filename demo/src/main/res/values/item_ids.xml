@@ -11,4 +11,17 @@
     <item name="item_tv_turnover" type="id"/>
     <item name="item_tv_market_cap" type="id"/>
     <item name="item_tv_circulating_cap" type="id"/>
+
+    <array name="column_ids">
+        <item>@id/item_tv_price</item>
+        <item>@id/item_tv_change</item>
+        <item>@id/item_tv_change_amount</item>
+        <item>@id/item_tv_prev_close</item>
+        <item>@id/item_tv_volume</item>
+        <item>@id/item_tv_amplitude</item>
+        <item>@id/item_tv_turnover</item>
+        <item>@id/item_tv_market_cap</item>
+        <item>@id/item_tv_circulating_cap</item>
+    </array>
+
 </resources>

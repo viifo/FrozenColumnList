@@ -2,11 +2,14 @@ package com.viifo.frozencolumnlist.demo.ui.fragment
 
 import android.graphics.Color
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Toast
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.lifecycleScope
+import androidx.recyclerview.widget.DefaultItemAnimator
+import androidx.recyclerview.widget.RecyclerView
 import com.viifo.frozencolumnlist.data.FrozenHeaderData
 import com.viifo.frozencolumnlist.data.SortDirection
 import com.viifo.frozencolumnlist.decoration.BoundDividerDecoration
@@ -14,6 +17,15 @@ import com.viifo.frozencolumnlist.demo.R
 import com.viifo.frozencolumnlist.demo.data.StockModel
 import com.viifo.frozencolumnlist.demo.databinding.FragementWatchlistBinding
 import com.viifo.frozencolumnlist.demo.ui.StockColumnProvider
+import com.viifo.frozencolumnlist.demo.ui.StockItemAnimator
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
+import java.util.Locale
+import kotlin.random.Random
 
 /**
  * 自选列表Fragment
@@ -21,7 +33,8 @@ import com.viifo.frozencolumnlist.demo.ui.StockColumnProvider
 class WatchlistFragment: Fragment() {
 
     private var mBinding: FragementWatchlistBinding? = null
-    private var stockList: List<StockModel> = emptyList()
+    private var stockList: MutableList<StockModel> = mutableListOf()
+    private var pushJob: Job? = null
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -46,6 +59,7 @@ class WatchlistFragment: Fragment() {
         mBinding?.frozenColumnList?.setProvider(provider)
         mBinding?.frozenColumnHeader?.setHeaderData(mockStockHeaderData(), provider)
         mBinding?.frozenColumnList?.attachHeader(mBinding?.frozenColumnHeader)
+        mBinding?.frozenColumnList?.setItemAnimator(StockItemAnimator(requireContext()))
         mBinding?.frozenColumnList?.addItemDecoration(
             BoundDividerDecoration(
                 context = context,
@@ -73,10 +87,21 @@ class WatchlistFragment: Fragment() {
                 sortStockData(current)
             }
         }
+
+        mBinding?.btnPush?.setOnClickListener {
+            if (pushJob?.isActive == true) { // 关闭推送
+                stopMockPush()
+                mBinding?.btnPush?.text = "开启推送"
+            } else { // 开启推送
+                startMockPush()
+                mBinding?.btnPush?.text = "关闭推送"
+            }
+        }
     }
 
     private fun initData() {
-        stockList = mockStockData()
+        stockList.clear()
+        stockList.addAll(mockStockData())
         mBinding?.frozenColumnList?.submitList(stockList)
     }
 
@@ -95,12 +120,15 @@ class WatchlistFragment: Fragment() {
                 else -> 0f
             }
         }
-        stockList = if (header.sort == SortDirection.Asc) {
-            stockList.sortedBy(selector)
-        } else {
+
+        val list = if (header.sort == SortDirection.Desc) {
             stockList.sortedByDescending(selector)
+        } else {
+            stockList.sortedBy(selector)
         }
-        mBinding?.frozenColumnList?.submitList(stockList)
+        stockList = list.toMutableList()
+        (mBinding?.frozenColumnList?.getItemAnimator() as? StockItemAnimator)?.isShowUpdateAnimator = false
+        mBinding?.frozenColumnList?.submitList(list)
     }
 
     /**
@@ -111,6 +139,66 @@ class WatchlistFragment: Fragment() {
             SortDirection.None -> SortDirection.Asc    // 默认 → 升序
             SortDirection.Asc -> SortDirection.Desc    // 升序 → 降序
             SortDirection.Desc -> SortDirection.None   // 降序 → 默认
+        }
+    }
+
+    /**
+     * 启动模拟实时推送数据
+     */
+    fun startMockPush() {
+        pushJob?.cancel()
+        pushJob = lifecycleScope.launch {
+            mockStockSocketFlow().collect { list ->
+                (mBinding?.frozenColumnList?.getItemAnimator() as? StockItemAnimator)?.isShowUpdateAnimator = true
+                mBinding?.frozenColumnList?.submitList(list)
+            }
+        }
+    }
+
+    /**
+     * 停止模拟实时推送数据
+     */
+    fun stopMockPush() {
+        pushJob?.cancel()
+    }
+
+    /**
+     * 模拟实时推送的数据流
+     */
+    private fun mockStockSocketFlow() = flow {
+        val layoutManager = mBinding?.frozenColumnList?.getLayoutManager()
+        while (currentCoroutineContext().isActive) {
+            delay(2000)
+            // 只有在静止状态（IDLE）下才处理逻辑
+            // 如果是在 FLING（惯性滚动）或 DRAGGING（拖拽中），直接跳过本次循环
+            if (mBinding?.frozenColumnList?.recyclerView?.scrollState != RecyclerView.SCROLL_STATE_IDLE) {
+                continue
+            }
+            val list = stockList.toMutableList()
+            if (list.isEmpty() || layoutManager == null) continue
+            // 实时获取屏幕可见的索引范围
+            val firstVisible = layoutManager.findFirstVisibleItemPosition()
+            val lastVisible = layoutManager.findLastVisibleItemPosition()
+            if (firstVisible == RecyclerView.NO_POSITION
+                || lastVisible == RecyclerView.NO_POSITION) continue
+
+            // 随机选择一个股票进行更新
+            val updateIndex = (firstVisible..lastVisible).random()
+            if (updateIndex < 0 || updateIndex >= list.size) continue
+
+            val basePrice = (300..500).random().toDouble()
+            val changeAmt = (Random.nextDouble() * 10).let { if (Random.nextBoolean()) it else -it }
+            val preClose = basePrice - changeAmt
+            val changePct = (changeAmt / preClose) * 100
+
+            // 更新指定索引的股票数据
+            list[updateIndex] = list[updateIndex].copy(
+                price = String.format(Locale.getDefault(), "%.2f", basePrice),
+                changePercent = String.format(Locale.getDefault(),"%+.2f%%", changePct),
+                changeAmount  = String.format(Locale.getDefault(),"%+.2f", changeAmt)
+            )
+            stockList = list
+            emit(list)
         }
     }
 

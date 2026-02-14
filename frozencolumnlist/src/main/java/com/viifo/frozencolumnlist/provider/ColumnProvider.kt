@@ -11,6 +11,7 @@ import com.viifo.frozencolumnlist.data.FrozenColumnData
 import com.viifo.frozencolumnlist.data.FrozenHeaderData
 import com.viifo.frozencolumnlist.data.SortDirection
 import com.viifo.frozencolumnlist.ext.dp2px
+import com.viifo.frozencolumnlist.layout.GenericStockAdapter.GenericViewHolder
 
 /**
  * 列视图提供器接口
@@ -149,18 +150,25 @@ interface ColumnProvider<T : FrozenColumnData> {
 
     /**
      * 绑定固定列数据到对应的 View
-     * @param views 固定列的子 View 列表
+     * @param holder ViewHolder
      * @param data 固定列对应的数据
      * @param payloads 局部刷新数据, 为空时表示全量刷新
      */
-    fun bindRowFrozenViews(views: List<View>, data: T, payloads: List<Any?>)
+    fun bindRowFrozenViews(
+        holder: GenericViewHolder<T>,
+        data: T,
+        payloads: List<Any?>
+    )
 
     /**
      * 绑定可滚动列数据到对应的 View
-     * @param views 可滚动列的子 View 列表
      * @param data 可滚动列对应的数据
      * @param payloads 局部刷新数据, 为空时表示全量刷新
      */
-    fun bindRowScrollableViews(views: List<View>, data: T, payloads: List<Any?>)
+    fun bindRowScrollableViews(
+        holder: GenericViewHolder<T>,
+        data: T,
+        payloads: List<Any?>
+    )
 
 }
