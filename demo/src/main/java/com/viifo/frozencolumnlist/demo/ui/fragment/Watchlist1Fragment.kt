@@ -9,14 +9,16 @@ import android.view.ViewGroup
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.RecyclerView
+import com.scwang.smart.refresh.footer.ClassicsFooter
+import com.scwang.smart.refresh.header.ClassicsHeader
 import com.viifo.frozencolumnlist.data.FrozenHeaderData
 import com.viifo.frozencolumnlist.data.SortDirection
 import com.viifo.frozencolumnlist.decoration.BoundDividerDecoration
 import com.viifo.frozencolumnlist.demo.R
 import com.viifo.frozencolumnlist.demo.data.StockModel
-import com.viifo.frozencolumnlist.demo.databinding.FragementWatchlistBinding
-import com.viifo.frozencolumnlist.demo.ui.StockItemAnimator
+import com.viifo.frozencolumnlist.demo.databinding.FragmentWatchlist1Binding
 import com.viifo.frozencolumnlist.demo.ui.StockColumnProvider
+import com.viifo.frozencolumnlist.demo.ui.StockItemAnimator
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
@@ -29,10 +31,14 @@ import kotlin.random.Random
 /**
  * 自选列表Fragment
  */
-class WatchlistFragment: Fragment() {
+class Watchlist1Fragment: Fragment() {
 
-    private var mBinding: FragementWatchlistBinding? = null
-    private var stockList: MutableList<StockModel> = mutableListOf()
+    private var mBinding: FragmentWatchlist1Binding? = null
+    private var stockList: List<StockModel> = listOf()
+    private var isWatchlist = true
+    private var currentPage = 0
+    private var watchlistPageSize = 200
+    private var positionsPageSize = 30
     private var pushJob: Job? = null
     private var animatorJob: Job? = null
 
@@ -41,7 +47,7 @@ class WatchlistFragment: Fragment() {
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        return FragementWatchlistBinding.inflate(
+        return FragmentWatchlist1Binding.inflate(
             inflater,
             container,
             false
@@ -55,6 +61,29 @@ class WatchlistFragment: Fragment() {
     }
 
     private fun initView() {
+        // 初始化刷新布局
+        mBinding?.refreshLayout?.setRefreshHeader(ClassicsHeader(requireContext()))
+        mBinding?.refreshLayout?.setRefreshFooter(ClassicsFooter(requireContext()))
+        mBinding?.refreshLayout?.setOnRefreshListener { refreshData() }
+        mBinding?.refreshLayout?.setOnLoadMoreListener { loadMoreData() }
+        mBinding?.refreshLayout?.setEnableAutoLoadMore(false)
+        mBinding?.refreshLayout?.setDisableContentWhenRefresh(true) // 禁用刷新时内容区域滚动
+        mBinding?.refreshLayout?.setDisableContentWhenLoading(true) // 禁用加载时内容区域滚动
+        // 解决refreshLayout 与 frozenColumnList 的滑动冲突
+        mBinding?.refreshLayout?.setEnableNestedScroll(false)
+//        // 或使用下面注释的代码， 解决refreshLayout 与 frozenColumnList 的滑动冲突
+//        mBinding?.refreshLayout?.setScrollBoundaryDecider(object : ScrollBoundaryDecider {
+//            override fun canRefresh(content: View?): Boolean {
+//                // 无法再往下拉时，允许触发刷新
+//                return mBinding?.frozenColumnList?.canScrollVertically(-1) == false
+//            }
+//            override fun canLoadMore(content: View?): Boolean {
+//                // 无法再往上拉时，允许触发加载
+//                return mBinding?.frozenColumnList?.canScrollVertically(1) == false
+//            }
+//        })
+
+        // 初始化 FrozenColumnList
         mBinding?.frozenColumnList?.attachHeader(mBinding?.frozenColumnHeader)
         mBinding?.frozenColumnList?.setItemAnimator(StockItemAnimator(requireContext()))
         mBinding?.frozenColumnList?.addItemDecoration(
@@ -86,6 +115,7 @@ class WatchlistFragment: Fragment() {
         }
 
         mBinding?.tvTabWatchlist?.setOnClickListener { view ->
+            isWatchlist = true
             mBinding?.tvTabWatchlist?.setTextColor(view.context.getColor(R.color.black))
             mBinding?.tvTabPositions?.setTextColor(view.context.getColor(R.color.gray))
             mBinding?.tvTabWatchlist?.setTextSize(TypedValue.COMPLEX_UNIT_SP, 18f)
@@ -94,6 +124,7 @@ class WatchlistFragment: Fragment() {
             initWatchList()
         }
         mBinding?.tvTabPositions?.setOnClickListener { view ->
+            isWatchlist = false
             mBinding?.tvTabWatchlist?.setTextColor(view.context.getColor(R.color.gray))
             mBinding?.tvTabPositions?.setTextColor(view.context.getColor(R.color.black))
             mBinding?.tvTabWatchlist?.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
@@ -115,6 +146,7 @@ class WatchlistFragment: Fragment() {
     }
 
     private fun initWatchList() {
+        currentPage = 0
         // 先将水平滚动偏移量设置为 0，切换列表后需要显示第一列
         mBinding?.frozenColumnList?.updateHorizontalOffset(0)
         // 更新表头 和 ColumnProvider (由于布局一致，这里使用同一个ColumnProvider)
@@ -127,6 +159,7 @@ class WatchlistFragment: Fragment() {
     }
 
     private fun initPositionsList() {
+        currentPage = 0
         // 先将水平滚动偏移量设置为 0，切换列表后需要显示第一列
         mBinding?.frozenColumnList?.updateHorizontalOffset(0)
         // 更新表头 和 ColumnProvider (由于布局一致，这里使用同一个ColumnProvider)
@@ -136,6 +169,54 @@ class WatchlistFragment: Fragment() {
         // 更新列表
         stockList = mockPositionsData().toMutableList()
         mBinding?.frozenColumnList?.submitList(stockList)
+    }
+
+    /**
+     * 刷新数据
+     */
+    private fun refreshData() {
+        lifecycleScope.launch {
+            // 刷新数据时，禁用水平滚动
+            // mBinding?.frozenColumnList?.canScrollHorizontally = false
+            delay(2000L)
+            currentPage = 0
+            if (isWatchlist) {
+                stockList = mockStockData().toMutableList()
+                mBinding?.frozenColumnList?.submitList(stockList)
+            } else {
+                stockList = mockPositionsData().toMutableList()
+                mBinding?.frozenColumnList?.submitList(stockList)
+            }
+            mBinding?.refreshLayout?.finishRefresh()
+            mBinding?.refreshLayout?.finishLoadMore()
+            // mBinding?.frozenColumnList?.canScrollHorizontally = true
+        }
+    }
+
+    /**
+     * 加载更多数据
+     */
+    private fun loadMoreData() {
+        lifecycleScope.launch {
+            // 加载更多数据时，禁用水平滚动
+            // mBinding?.frozenColumnList?.canScrollHorizontally = false
+            delay(2000L)
+            currentPage += 1
+            if (isWatchlist) {
+                val list = mockStockData(currentPage * watchlistPageSize).toMutableList()
+                list.addAll(0, stockList)
+                stockList = list
+                mBinding?.frozenColumnList?.submitList(stockList)
+            } else {
+                val list = mockPositionsData(currentPage * positionsPageSize).toMutableList()
+                list.addAll(0, stockList)
+                stockList = list
+                mBinding?.frozenColumnList?.submitList(stockList)
+            }
+            mBinding?.refreshLayout?.finishRefresh()
+            mBinding?.refreshLayout?.finishLoadMore()
+            // mBinding?.frozenColumnList?.canScrollHorizontally = true
+        }
     }
 
     /**
@@ -189,7 +270,7 @@ class WatchlistFragment: Fragment() {
     private fun showUpdateAnimation(show: Boolean) {
         (mBinding
             ?.frozenColumnList
-            ?.getItemAnimator() as? StockItemAnimator)
+            ?.itemAnimator as? StockItemAnimator)
             ?.isShowUpdateAnimation = show
     }
 
@@ -220,12 +301,12 @@ class WatchlistFragment: Fragment() {
      * 模拟实时推送的数据流
      */
     private fun mockStockSocketFlow() = flow {
-        val layoutManager = mBinding?.frozenColumnList?.getLayoutManager()
+        val layoutManager = mBinding?.frozenColumnList?.getFrozenColumnLayoutManager()
         while (currentCoroutineContext().isActive) {
             delay(2000)
             // 只有在静止状态（IDLE）下才处理逻辑
             // 如果是在 FLING（惯性滚动）或 DRAGGING（拖拽中），直接跳过本次循环
-            if (mBinding?.frozenColumnList?.recyclerView?.scrollState != RecyclerView.SCROLL_STATE_IDLE) {
+            if (mBinding?.frozenColumnList?.scrollState != RecyclerView.SCROLL_STATE_IDLE) {
                 continue
             }
             val list = stockList.toMutableList()
@@ -259,14 +340,14 @@ class WatchlistFragment: Fragment() {
     /**
      * 模拟股票数据
      */
-    private fun mockStockData(): List<StockModel> {
-        return List(200) { i ->
+    private fun mockStockData(startPosition: Int = 0): List<StockModel> {
+        return List(watchlistPageSize) { i ->
             val isUp = (0..1).random() == 1
             val prefix = if (isUp) "+" else "-"
             StockModel(
                 columnCount = 10,
-                code = "00700.HK",
-                name = "腾讯控股 $i",
+                code = String.format("%05d.HK", i + startPosition),
+                name = "自选股票 ${i + startPosition}",
                 price = "${380 + i}.20",
                 changePercent = if (i % 2 == 0) "+2.45%" else "-1.12%",
                 changeAmount = "$prefix${(0..5).random()}.${(10..99).random()}",
@@ -337,14 +418,14 @@ class WatchlistFragment: Fragment() {
     /**
      * 模拟持仓数据
      */
-    private fun mockPositionsData(): List<StockModel> {
-        return List(30) { i ->
+    private fun mockPositionsData(startPosition: Int = 0): List<StockModel> {
+        return List(positionsPageSize) { i ->
             val isUp = (0..1).random() == 1
             val prefix = if (isUp) "+" else "-"
             StockModel(
                 columnCount = 6,
-                code = String.format("%05d.HK", (1..99999).random()),
-                name = "持仓标的 $i",
+                code = String.format("%05d.HK", i + startPosition),
+                name = "持仓股票 ${i + startPosition}",
                 price = "${380 + i}.20",
                 changePercent = if (i % 2 == 0) "+2.45%" else "-1.12%",
                 changeAmount = "$prefix${(0..5).random()}.${(10..99).random()}",

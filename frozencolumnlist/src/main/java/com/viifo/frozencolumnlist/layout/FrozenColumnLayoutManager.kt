@@ -68,8 +68,11 @@ class FrozenColumnLayoutManager(
     /** 是否正在执行 fling 动画 */
     private val isFling = AtomicBoolean(false)
 
+    /** 是否允许水平滚动，默认为 true */
+    var canScrollHorizontally = true
+
     /** 是否支持水平滚动 */
-    override fun canScrollHorizontally(): Boolean = true
+    override fun canScrollHorizontally(): Boolean = canScrollHorizontally
 
     /** 滚动状态改变 */
     override fun onScrollStateChanged(state: Int) {

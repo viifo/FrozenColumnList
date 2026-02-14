@@ -1,10 +1,8 @@
 package com.viifo.frozencolumnlist
 
-import android.annotation.SuppressLint
 import android.content.Context
 import android.util.AttributeSet
 import android.view.MotionEvent
-import android.widget.FrameLayout
 import androidx.core.content.withStyledAttributes
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
@@ -24,45 +22,49 @@ class FrozenColumnList @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
     defStyleAttr: Int = 0
-) : FrameLayout(context, attrs, defStyleAttr) {
+) : RecyclerView(context, attrs, defStyleAttr) {
 
     /** 越界回弹阻尼系数，默认为 0.6f */
-    var overScrollDamping = 0f
-        get() = layoutManager
+    var overScrollDamping = 0.0f
+        get() = frozenColumnLayoutManager
             ?.overScrollDamping
             ?: FrozenColumConfig.DEFAULT_OVER_SCROLL_DAMPING
         set(value) {
             field = value
-            layoutManager?.overScrollDamping = value
+            frozenColumnLayoutManager?.overScrollDamping = value
         }
 
     /** 越界回弹动画触发阈值（像素, 默认 10dp） */
     var overScrollAnimatorThreshold = 0
-        get() = layoutManager
+        get() = frozenColumnLayoutManager
             ?.overScrollAnimatorThreshold
             ?: context.dp2px(FrozenColumConfig.DEFAULT_OVER_SCROLL_ANIMATOR_THRESHOLD_DP)
         set(value) {
             field = value
-            layoutManager?.overScrollAnimatorThreshold = value
+            frozenColumnLayoutManager?.overScrollAnimatorThreshold = value
         }
 
     /** 最大越界距离（像素, 默认 80dp） */
     var maxOverScrollThreshold: Int = 0
-        get() = layoutManager
+        get() = frozenColumnLayoutManager
             ?.maxOverScrollThreshold
             ?: context.dp2px(FrozenColumConfig.DEFAULT_MAX_OVER_SCROLL_THRESHOLD_DP)
         set(value) {
             field = value
-            layoutManager?.maxOverScrollThreshold = value
+            frozenColumnLayoutManager?.maxOverScrollThreshold = value
         }
 
-    /** 内部持有的 RecyclerView */
-    val recyclerView: RecyclerView = RecyclerView(context).apply {
-        layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT)
-    }
+    /** 是否允许水平滚动，默认为 true */
+    var canScrollHorizontally = true
+        get() = frozenColumnLayoutManager?.canScrollHorizontally ?: true
+        set(value) {
+            field = value
+            frozenColumnLayoutManager?.canScrollHorizontally = value
+        }
+
     private var provider: ColumnProvider<out FrozenColumnData>? = null
-    private var adapter: GenericStockAdapter<out FrozenColumnData>? = null
-    private var layoutManager: FrozenColumnLayoutManager? = null
+    private var genericStockAdapter: GenericStockAdapter<out FrozenColumnData>? = null
+    private var frozenColumnLayoutManager: FrozenColumnLayoutManager? = null
 
     /**
      * 设置 Adapter 并绑定数据
@@ -70,8 +72,8 @@ class FrozenColumnList @JvmOverloads constructor(
      */
     fun <T: FrozenColumnData> setProvider(provider: ColumnProvider<T>) {
         this@FrozenColumnList.provider = provider
-        layoutManager?.frozenColumnCount = provider.getFrozenColumnCount()
-        recyclerView.adapter = GenericStockAdapter(provider).also { adapter = it }
+        frozenColumnLayoutManager?.frozenColumnCount = provider.getFrozenColumnCount()
+        adapter = GenericStockAdapter(provider).also { genericStockAdapter = it }
     }
 
     /**
@@ -85,32 +87,17 @@ class FrozenColumnList @JvmOverloads constructor(
     }
 
     /**
-     * 重建 List， 通常在表头数量发生变化时使用
-     * @param list 数据列表
-     */
-    @Suppress("UNCHECKED_CAST")
-    @SuppressLint("NotifyDataSetChanged")
-    fun <T: FrozenColumnData> rebuildList(list: List<T>) {
-        (adapter as? ListAdapter<T, *>)?.apply {
-            // TODO ... 刷新数据
-            // 清理缓存池并更新数据，强制 Adapter 重新走 onCreateViewHolder
-            recyclerView.recycledViewPool.clear()
-            notifyDataSetChanged()
-        }
-    }
-
-    /**
      * 绑定表头视图 (同步滚动表头)
      * @param header 表头视图
      */
     fun attachHeader(header: FrozenColumnHeader?) {
         if (header == null) return
-        layoutManager?.addHorizontalScrollListener {
-            layoutManager?.syncColumns(header)
+        frozenColumnLayoutManager?.addHorizontalScrollListener {
+            frozenColumnLayoutManager?.syncColumns(header)
         }
         header.onHorizontalScrollListener = { event ->
             // 将 Header 的触摸事件转发给 RecyclerView 处理
-            recyclerView.dispatchTouchEvent(event)
+            dispatchTouchEvent(event)
         }
     }
 
@@ -119,7 +106,7 @@ class FrozenColumnList @JvmOverloads constructor(
      */
     fun syncHeaderOffset(header: FrozenColumnHeader?) {
         header?.let {
-            layoutManager?.syncColumns(header)
+            frozenColumnLayoutManager?.syncColumns(header)
         }
     }
 
@@ -128,28 +115,21 @@ class FrozenColumnList @JvmOverloads constructor(
      * @param newOffset 新的滚动偏移量
      */
     fun updateHorizontalOffset(newOffset: Int) {
-        layoutManager?.updateHorizontalOffset(newOffset)
-    }
-
-    /**
-     * 添加 ItemDecoration
-     */
-    fun addItemDecoration(decoration: RecyclerView.ItemDecoration) {
-        recyclerView.addItemDecoration(decoration)
+        frozenColumnLayoutManager?.updateHorizontalOffset(newOffset)
     }
 
     /**
      * 添加水平滚动监听
      */
     fun addHorizontalScrollListener(listener: (Int) -> Unit) {
-        layoutManager?.addHorizontalScrollListener(listener)
+        frozenColumnLayoutManager?.addHorizontalScrollListener(listener)
     }
 
     /**
      * 移除水平滚动监听
      */
     fun removeHorizontalScrollListener(listener: (Int) -> Unit) {
-        layoutManager?.removeHorizontalScrollListener(listener)
+        frozenColumnLayoutManager?.removeHorizontalScrollListener(listener)
     }
 
     /**
@@ -159,42 +139,28 @@ class FrozenColumnList @JvmOverloads constructor(
     fun setSpringBackAnimatorProvider(
         animatorProvider: SpringBackAnimatorProvider?
     ) {
-        layoutManager?.springBackAnimatorProvider = animatorProvider
+        frozenColumnLayoutManager?.springBackAnimatorProvider = animatorProvider
     }
 
     /**
      * 获取布局管理器
      */
-    fun getLayoutManager(): FrozenColumnLayoutManager? {
-        return layoutManager ?: (recyclerView.layoutManager as? FrozenColumnLayoutManager)
+    fun getFrozenColumnLayoutManager(): FrozenColumnLayoutManager? {
+        return frozenColumnLayoutManager ?: (layoutManager as? FrozenColumnLayoutManager)
     }
 
     /**
      * 获取适配器
      */
-    fun getAdapter(): GenericStockAdapter<out FrozenColumnData>? {
-        return adapter ?: (recyclerView.adapter as? GenericStockAdapter<out FrozenColumnData>)
-    }
-
-    /**
-     * 设置 ItemAnimator
-     */
-    fun setItemAnimator(animator: RecyclerView.ItemAnimator?) {
-        recyclerView.itemAnimator = animator
-    }
-
-    /**
-     * 获取 ItemAnimator
-     */
-    fun getItemAnimator(): RecyclerView.ItemAnimator? {
-        return recyclerView.itemAnimator
+    fun getFrozenColumnAdapter(): GenericStockAdapter<out FrozenColumnData>? {
+        return getFrozenColumnAdapter() ?: (adapter as? GenericStockAdapter<out FrozenColumnData>)
     }
 
     /**
      * 处理 ViewPager2 嵌套冲突
      */
     private fun setupTouchConflictResolution() {
-        recyclerView.addOnItemTouchListener(object : RecyclerView.SimpleOnItemTouchListener() {
+        addOnItemTouchListener(object : SimpleOnItemTouchListener() {
             private var startX = 0f
             private var startY = 0f
 
@@ -231,10 +197,9 @@ class FrozenColumnList @JvmOverloads constructor(
         // 处理 ViewPager2 嵌套冲突
         // setupTouchConflictResolution()
         // 初始化 recyclerView 并添加到根布局
-        recyclerView.layoutManager = FrozenColumnLayoutManager(context).also { layoutManager = it }
-        recyclerView.setHasFixedSize(true)
-        recyclerView.overScrollMode = OVER_SCROLL_NEVER
-        addView(recyclerView)
+        layoutManager = FrozenColumnLayoutManager(context).also { frozenColumnLayoutManager = it }
+        setHasFixedSize(true)
+        overScrollMode = OVER_SCROLL_NEVER
     }
 
     /**
@@ -267,7 +232,7 @@ class FrozenColumnList @JvmOverloads constructor(
     }
 
     override fun onDetachedFromWindow() {
-        layoutManager?.removeAllHorizontalScrollListener()
+        frozenColumnLayoutManager?.removeAllHorizontalScrollListener()
         super.onDetachedFromWindow()
     }
 

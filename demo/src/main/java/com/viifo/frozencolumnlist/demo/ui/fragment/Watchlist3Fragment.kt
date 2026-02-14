@@ -5,18 +5,18 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
-import com.viifo.frozencolumnlist.demo.databinding.FragementProfileBinding
+import com.viifo.frozencolumnlist.demo.databinding.FragmentWatchlist3Binding
 
-class ProfileFragment: Fragment() {
+class Watchlist3Fragment: Fragment() {
 
-    private var mBinding: FragementProfileBinding? = null
+    private var mBinding: FragmentWatchlist3Binding? = null
 
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        return FragementProfileBinding.inflate(
+        return FragmentWatchlist3Binding.inflate(
             inflater,
             container,
             false
