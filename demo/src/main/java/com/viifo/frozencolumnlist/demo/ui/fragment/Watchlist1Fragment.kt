@@ -6,6 +6,7 @@ import android.util.TypedValue
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.RecyclerView
@@ -155,6 +156,10 @@ class Watchlist1Fragment: Fragment() {
         val provider = StockColumnProvider()
         mBinding?.frozenColumnList?.setProvider(provider)
         mBinding?.frozenColumnHeader?.setHeaderData(mockStockHeaderData(), provider)
+        mBinding?.frozenColumnList?.setOnItemClickListener { view, position ->
+            val item = mBinding?.frozenColumnList?.getItemByPosition<StockModel>(position)
+            Toast.makeText(context, "点击了 item ${item?.name}", Toast.LENGTH_SHORT).show()
+        }
         // 更新列表
         stockList = mockStockData().toMutableList()
         mBinding?.frozenColumnList?.submitList(stockList)

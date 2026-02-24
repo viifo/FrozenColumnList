@@ -30,7 +30,7 @@ class StockColumnProvider : DefaultColumnProvider<StockModel>() {
         }
     }
 
-    override fun createRowFrozenViews(parent: ViewGroup, size: Int): List<View> {
+    override fun createRowFrozenViews(parent: ViewGroup, viewType: Int, size: Int): List<View> {
         val paddingVertical = parent.context.dp2px(8)
         return (0 until size).map {
             LinearLayoutCompat(parent.context).apply {
@@ -57,7 +57,7 @@ class StockColumnProvider : DefaultColumnProvider<StockModel>() {
         }
     }
 
-    override fun createRowScrollableViews(parent: ViewGroup, size: Int): List<View> {
+    override fun createRowScrollableViews(parent: ViewGroup, viewType: Int, size: Int): List<View> {
         // 可滚动列 (动态设置，eg.这里设置 9 列)
         val typedArray = parent.context.resources.obtainTypedArray(R.array.column_ids)
         val list = (0 until size).map { index ->

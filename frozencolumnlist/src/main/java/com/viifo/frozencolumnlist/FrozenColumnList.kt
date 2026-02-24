@@ -3,7 +3,9 @@ package com.viifo.frozencolumnlist
 import android.content.Context
 import android.util.AttributeSet
 import android.view.MotionEvent
+import android.view.View
 import android.view.ViewConfiguration
+import androidx.annotation.IdRes
 import androidx.core.content.withStyledAttributes
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
@@ -85,7 +87,7 @@ class FrozenColumnList @JvmOverloads constructor(
     fun <T: FrozenColumnData> setProvider(provider: ColumnProvider<T>) {
         this@FrozenColumnList.provider = provider
         frozenColumnLayoutManager?.frozenColumnCount = provider.getFrozenColumnCount()
-        adapter = GenericStockAdapter(provider).also { genericStockAdapter = it }
+        adapter = provider.getAdapter().also { genericStockAdapter = it }
     }
 
     /**
@@ -111,6 +113,40 @@ class FrozenColumnList @JvmOverloads constructor(
             // 将 Header 的触摸事件转发给 RecyclerView 处理
             dispatchTouchEvent(event)
         }
+    }
+
+    /**
+     * 添加子项点击事件监听的 View ID 集合
+     * @param viewIds 子项点击事件监听的 View ID 集合
+     */
+    fun addChildClickViewIds(@IdRes vararg viewIds: Int) {
+        genericStockAdapter?.addChildClickViewIds(*viewIds)
+    }
+
+    /**
+     * 设置 item 子 view 点击事件监听
+     * @param listener 子 view项点击事件监听回调
+     */
+    fun setOnItemChildClickListener(listener: ((View, Int) -> Unit)? = null) {
+        genericStockAdapter?.onItemChildClickListener = listener
+    }
+
+    /**
+     * 设置 Item 点击事件监听
+     * @param listener Item 点击事件监听回调
+     */
+    fun setOnItemClickListener(listener: ((View, Int) -> Unit)? = null) {
+        genericStockAdapter?.onItemClickListener = listener
+    }
+
+    /**
+     * 获取指定位置的 Item 数据
+     * @param position Item 位置
+     * @return Item 数据
+     */
+    @Suppress("UNCHECKED_CAST")
+    fun <T: FrozenColumnData> getItemByPosition(position: Int): T? {
+        return (adapter as? ListAdapter<T, *>)?.currentList?.getOrNull(position)
     }
 
     /**
