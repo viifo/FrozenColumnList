@@ -65,7 +65,9 @@ class FrozenColumnList @JvmOverloads constructor(
             frozenColumnLayoutManager?.canScrollHorizontally = value
         }
 
-    private var provider: ColumnProvider<out FrozenColumnData>? = null
+    var provider: ColumnProvider<out FrozenColumnData>? = null
+        private set
+
     private var genericStockAdapter: GenericStockAdapter<out FrozenColumnData>? = null
     private var frozenColumnLayoutManager: FrozenColumnLayoutManager? = null
 
@@ -87,7 +89,11 @@ class FrozenColumnList @JvmOverloads constructor(
     fun <T: FrozenColumnData> setProvider(provider: ColumnProvider<T>) {
         this@FrozenColumnList.provider = provider
         frozenColumnLayoutManager?.frozenColumnCount = provider.getFrozenColumnCount()
-        adapter = provider.getAdapter().also { genericStockAdapter = it }
+        adapter = provider.getAdapter().also {
+            genericStockAdapter = it
+            it.setupEmptyView(context, provider.createEmptyView(context))
+            it.setupFooterView(context, provider.createFooterView(context))
+        }
     }
 
     /**
@@ -127,7 +133,7 @@ class FrozenColumnList @JvmOverloads constructor(
      * 设置 item 子 view 点击事件监听
      * @param listener 子 view项点击事件监听回调
      */
-    fun setOnItemChildClickListener(listener: ((View, Int) -> Unit)? = null) {
+    fun setOnItemChildClickListener(listener: ((View, position: Int, itemViewType: Int) -> Unit)? = null) {
         genericStockAdapter?.onItemChildClickListener = listener
     }
 
@@ -135,8 +141,40 @@ class FrozenColumnList @JvmOverloads constructor(
      * 设置 Item 点击事件监听
      * @param listener Item 点击事件监听回调
      */
-    fun setOnItemClickListener(listener: ((View, Int) -> Unit)? = null) {
+    fun setOnItemClickListener(listener: ((View, position: Int, itemViewType: Int) -> Unit)? = null) {
         genericStockAdapter?.onItemClickListener = listener
+    }
+
+    /**
+     * 设置 EmptyView 子 view 点击事件监听
+     * @param listener 子 view项点击事件监听回调
+     */
+    fun setOnEmptyViewChildClickListener(listener: ((View) -> Unit)? = null) {
+        genericStockAdapter?.onEmptyViewChildClickListener = listener
+    }
+
+    /**
+     * 设置 EmptyView 点击事件监听
+     * @param listener Item 点击事件监听回调
+     */
+    fun setOnEmptyViewClickListener(listener: ((View) -> Unit)? = null) {
+        genericStockAdapter?.onEmptyViewClickListener = listener
+    }
+
+    /**
+     * 设置 FooterView 子 view 点击事件监听
+     * @param listener 子 view项点击事件监听回调
+     */
+    fun setOnFooterViewChildClickListener(listener: ((View) -> Unit)? = null) {
+        genericStockAdapter?.onFooterViewChildClickListener = listener
+    }
+
+    /**
+     * 设置 FooterView 点击事件监听
+     * @param listener Item 点击事件监听回调
+     */
+    fun setOnFooterViewClickListener(listener: ((View) -> Unit)? = null) {
+        genericStockAdapter?.onFooterViewClickListener = listener
     }
 
     /**
@@ -145,7 +183,7 @@ class FrozenColumnList @JvmOverloads constructor(
      * @return Item 数据
      */
     @Suppress("UNCHECKED_CAST")
-    fun <T: FrozenColumnData> getItemByPosition(position: Int): T? {
+    fun <T: FrozenColumnData> getItem(position: Int): T? {
         return (adapter as? ListAdapter<T, *>)?.currentList?.getOrNull(position)
     }
 
@@ -205,6 +243,14 @@ class FrozenColumnList @JvmOverloads constructor(
     }
 
     /**
+     * 获取当前绑定的数据列表
+     * @return 当前绑定的数据列表
+     */
+    fun getData(): List<FrozenColumnData>? {
+        return getFrozenColumnAdapter()?.currentList
+    }
+
+    /**
      * 处理 ViewPager2 嵌套冲突
      */
     fun setupTouchConflictResolution(value: Boolean) {
@@ -224,7 +270,7 @@ class FrozenColumnList @JvmOverloads constructor(
      */
     private fun initView() {
         layoutManager = FrozenColumnLayoutManager(context).also { frozenColumnLayoutManager = it }
-        setHasFixedSize(true)
+        // setHasFixedSize(true)
         overScrollMode = OVER_SCROLL_NEVER
     }
 

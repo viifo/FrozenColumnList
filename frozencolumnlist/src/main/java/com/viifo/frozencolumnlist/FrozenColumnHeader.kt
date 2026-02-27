@@ -95,6 +95,14 @@ class FrozenColumnHeader @JvmOverloads constructor(
     }
 
     /**
+     * 设置列视图提供器
+     * @param provider 列视图提供器
+     */
+    fun setProvider(provider: ColumnProvider<out FrozenColumnData>) {
+        this.provider = provider
+    }
+
+    /**
      * 刷新单个表头数据，
      * @param position 需要刷新的表头位置
      * @param item 新的表头数据
@@ -108,13 +116,9 @@ class FrozenColumnHeader @JvmOverloads constructor(
     /**
      * 设置表头数据
      * @param headerData 表头数据
-     * @param provider 列视图提供器
      */
-    fun setHeaderData(
-        data: List<FrozenHeaderData>,
-        provider: ColumnProvider<out FrozenColumnData>
-    ) {
-        this.provider = provider
+    fun setHeaderData(data: List<FrozenHeaderData>) {
+        val provider = this.provider ?: throw IllegalArgumentException("ColumnProvider is not set")
         headerData.clear()
         headerData.addAll(data)
         frozenColumnCount = provider.getFrozenColumnCount()

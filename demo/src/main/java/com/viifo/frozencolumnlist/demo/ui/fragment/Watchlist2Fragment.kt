@@ -27,7 +27,7 @@ class Watchlist2Fragment: Fragment() {
 
     private var stockList: List<StockModel> = listOf()
     private var currentPage = 0
-    private var watchlistPageSize = 100
+    private var watchlistPageSize = 5
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -53,11 +53,14 @@ class Watchlist2Fragment: Fragment() {
         mBinding?.refreshLayout?.setRefreshFooter(ClassicsFooter(requireContext()))
         mBinding?.refreshLayout?.setOnRefreshListener { refreshData() }
         mBinding?.refreshLayout?.setOnLoadMoreListener { loadMoreData() }
+        mBinding?.refreshLayout?.setEnableLoadMore(false)
         mBinding?.refreshLayout?.setEnableAutoLoadMore(false)
         mBinding?.refreshLayout?.setEnableNestedScroll(false)
 
         // 初始化 FrozenColumnList
         // mBinding?.frozenColumnList?.setupTouchConflictResolution(true)
+        val provider = StockColumnProvider()
+        mBinding?.frozenColumnList?.setProvider(provider)
         mBinding?.frozenColumnList?.attachHeader(mBinding?.frozenColumnHeader)
         mBinding?.frozenColumnList?.setItemAnimator(StockItemAnimator(requireContext()))
         mBinding?.frozenColumnList?.addItemDecoration(
@@ -66,6 +69,22 @@ class Watchlist2Fragment: Fragment() {
                 dividerColor = context?.getColor(R.color.divider_2) ?: Color.GRAY
             )
         )
+        // 设置 EmptyView 点击事件
+        mBinding?.frozenColumnList?.addChildClickViewIds(R.id.empty_item_icon, R.id.empty_item_desc)
+        mBinding?.frozenColumnList?.setOnEmptyViewChildClickListener { view ->
+            Toast.makeText(context, "点击了 EmptyView，id = ${view.id}", Toast.LENGTH_SHORT).show()
+        }
+        // 设置 Footer View 点击事件
+        mBinding?.frozenColumnList?.setOnFooterViewClickListener { view ->
+            Toast.makeText(context, "点击了 Footer View", Toast.LENGTH_SHORT).show()
+        }
+        // 设置 Item 点击事件
+        mBinding?.frozenColumnList?.setOnItemClickListener { view, position, itemViewType ->
+            val item = mBinding?.frozenColumnList?.getItem<StockModel>(position)
+            Toast.makeText(context, "点击了 item ${item?.name}", Toast.LENGTH_SHORT).show()
+        }
+        // 初始化 FrozenColumnHeader
+        mBinding?.frozenColumnHeader?.setProvider(provider)
         mBinding?.frozenColumnHeader?.onHeaderClickListener = { _, index ->
             // 点击表头排序
             mBinding?.frozenColumnHeader?.headerData?.let { list ->
@@ -75,6 +94,19 @@ class Watchlist2Fragment: Fragment() {
                     "点击了表头 ${item.name}，当前排序方向 ${item.sort}",
                     Toast.LENGTH_SHORT
                 ).show()
+            }
+        }
+
+        mBinding?.btnLoad?.setOnClickListener {
+            if (stockList.isEmpty()) {
+                // 更新列表
+                stockList = mockStockData().toMutableList()
+                mBinding?.frozenColumnList?.submitList(stockList)
+                mBinding?.btnLoad?.text = "清空数据"
+            } else {
+                stockList = emptyList()
+                mBinding?.frozenColumnList?.submitList(stockList)
+                mBinding?.btnLoad?.text = "加载数据"
             }
         }
     }
@@ -87,13 +119,8 @@ class Watchlist2Fragment: Fragment() {
         currentPage = 0
         // 先将水平滚动偏移量设置为 0，切换列表后需要显示第一列
         mBinding?.frozenColumnList?.updateHorizontalOffset(0)
-        // 更新表头 和 ColumnProvider (由于布局一致，这里使用同一个ColumnProvider)
-        val provider = StockColumnProvider()
-        mBinding?.frozenColumnList?.setProvider(provider)
-        mBinding?.frozenColumnHeader?.setHeaderData(mockStockHeaderData(), provider)
-        // 更新列表
-        stockList = mockStockData().toMutableList()
-        mBinding?.frozenColumnList?.submitList(stockList)
+        // 更新表头
+        mBinding?.frozenColumnHeader?.setHeaderData(mockStockHeaderData())
     }
 
     /**
@@ -109,6 +136,7 @@ class Watchlist2Fragment: Fragment() {
             stockList = mockStockData().toMutableList()
             mBinding?.frozenColumnList?.submitList(stockList)
 
+            mBinding?.btnLoad?.text = "清空数据"
             mBinding?.refreshLayout?.finishRefresh()
             mBinding?.refreshLayout?.finishLoadMore()
             mBinding?.frozenColumnList?.canScrollHorizontally = true
@@ -130,6 +158,7 @@ class Watchlist2Fragment: Fragment() {
             stockList = list
             mBinding?.frozenColumnList?.submitList(stockList)
 
+            mBinding?.btnLoad?.text = "清空数据"
             mBinding?.refreshLayout?.finishRefresh()
             mBinding?.refreshLayout?.finishLoadMore()
             mBinding?.frozenColumnList?.canScrollHorizontally = true

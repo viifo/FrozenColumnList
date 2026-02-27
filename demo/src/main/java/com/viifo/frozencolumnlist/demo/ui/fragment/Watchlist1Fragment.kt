@@ -87,6 +87,8 @@ class Watchlist1Fragment: Fragment() {
 
         // 初始化 FrozenColumnList
         // mBinding?.frozenColumnList?.setupTouchConflictResolution(true)
+        val provider = StockColumnProvider()
+        mBinding?.frozenColumnList?.setProvider(provider)
         mBinding?.frozenColumnList?.attachHeader(mBinding?.frozenColumnHeader)
         mBinding?.frozenColumnList?.setItemAnimator(StockItemAnimator(requireContext()))
         mBinding?.frozenColumnList?.addItemDecoration(
@@ -95,6 +97,12 @@ class Watchlist1Fragment: Fragment() {
                 dividerColor = context?.getColor(R.color.divider_2) ?: Color.GRAY
             )
         )
+        mBinding?.frozenColumnList?.setOnItemClickListener { view, position, itemViewType ->
+            val item = mBinding?.frozenColumnList?.getItem<StockModel>(position)
+            Toast.makeText(context, "点击了 item ${item?.name}", Toast.LENGTH_SHORT).show()
+        }
+        // 初始化 FrozenColumnHeader
+        mBinding?.frozenColumnHeader?.setProvider(provider)
         mBinding?.frozenColumnHeader?.onHeaderClickListener = { _, index ->
             // 点击表头排序
             mBinding?.frozenColumnHeader?.headerData?.let { list ->
@@ -152,14 +160,8 @@ class Watchlist1Fragment: Fragment() {
         currentPage = 0
         // 先将水平滚动偏移量设置为 0，切换列表后需要显示第一列
         mBinding?.frozenColumnList?.updateHorizontalOffset(0)
-        // 更新表头 和 ColumnProvider (由于布局一致，这里使用同一个ColumnProvider)
-        val provider = StockColumnProvider()
-        mBinding?.frozenColumnList?.setProvider(provider)
-        mBinding?.frozenColumnHeader?.setHeaderData(mockStockHeaderData(), provider)
-        mBinding?.frozenColumnList?.setOnItemClickListener { view, position ->
-            val item = mBinding?.frozenColumnList?.getItemByPosition<StockModel>(position)
-            Toast.makeText(context, "点击了 item ${item?.name}", Toast.LENGTH_SHORT).show()
-        }
+        // 更新表头
+        mBinding?.frozenColumnHeader?.setHeaderData(mockStockHeaderData())
         // 更新列表
         stockList = mockStockData().toMutableList()
         mBinding?.frozenColumnList?.submitList(stockList)
@@ -169,10 +171,8 @@ class Watchlist1Fragment: Fragment() {
         currentPage = 0
         // 先将水平滚动偏移量设置为 0，切换列表后需要显示第一列
         mBinding?.frozenColumnList?.updateHorizontalOffset(0)
-        // 更新表头 和 ColumnProvider (由于布局一致，这里使用同一个ColumnProvider)
-        val provider = StockColumnProvider()
-        mBinding?.frozenColumnList?.setProvider(provider)
-        mBinding?.frozenColumnHeader?.setHeaderData(mockPositionHeaderData(), provider)
+        // 更新表头
+        mBinding?.frozenColumnHeader?.setHeaderData(mockPositionHeaderData())
         // 更新列表
         stockList = mockPositionsData().toMutableList()
         mBinding?.frozenColumnList?.submitList(stockList)

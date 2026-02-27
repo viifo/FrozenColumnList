@@ -1,5 +1,6 @@
 package com.viifo.frozencolumnlist.provider
 
+import android.content.Context
 import android.view.View
 import android.view.ViewGroup
 import com.viifo.frozencolumnlist.data.FrozenColumnData
@@ -21,6 +22,20 @@ interface ColumnProvider<T : FrozenColumnData> {
      * @return Adapter
      */
     fun getAdapter(): GenericStockAdapter<T> = GenericStockAdapter(this)
+
+    /**
+     * 创建空视图
+     * @param context 上下文
+     * @return 空视图
+     */
+    fun createEmptyView(context: Context): View? = null
+
+    /**
+     * 创建底部视图
+     * @param context 上下文
+     * @return 底部视图
+     */
+    fun createFooterView(context: Context): View? = null
 
     /**
      * 获取冻结(固定)列数量
