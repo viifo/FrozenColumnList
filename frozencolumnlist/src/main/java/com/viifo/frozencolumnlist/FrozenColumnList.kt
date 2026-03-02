@@ -83,7 +83,7 @@ class FrozenColumnList @JvmOverloads constructor(
     private var startY = 0f
 
     /**
-     * 设置 Adapter 并绑定数据
+     * 为 FrozenColumnList 设置 ColumnProvider
      * @param provider 列视图提供器
      */
     fun <T: FrozenColumnData> setProvider(provider: ColumnProvider<T>) {
@@ -97,7 +97,7 @@ class FrozenColumnList @JvmOverloads constructor(
     }
 
     /**
-     * 设置 Adapter 绑定的数据
+     * 设置 FrozenColumnList 的数据
      * @param list 数据列表
      * @param commitCallback 提交完成回调
      */
