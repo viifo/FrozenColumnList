@@ -2,6 +2,7 @@ package com.viifo.frozencolumnlist.demo.ui.fragment
 
 import android.graphics.Color
 import android.os.Bundle
+import android.util.Log
 import android.util.TypedValue
 import android.view.LayoutInflater
 import android.view.View
@@ -86,7 +87,7 @@ class Watchlist1Fragment: Fragment() {
 //        })
 
         // 初始化 FrozenColumnList
-        // mBinding?.frozenColumnList?.setupTouchConflictResolution(true)
+        // mBinding?.frozenColumnList?.setupViewPager2TouchConflictResolution(true)
         val provider = StockColumnProvider()
         mBinding?.frozenColumnList?.setProvider(provider)
         mBinding?.frozenColumnList?.attachHeader(mBinding?.frozenColumnHeader)
@@ -103,7 +104,7 @@ class Watchlist1Fragment: Fragment() {
         }
         // 初始化 FrozenColumnHeader
         mBinding?.frozenColumnHeader?.setProvider(provider)
-        mBinding?.frozenColumnHeader?.onHeaderClickListener = { _, index ->
+        mBinding?.frozenColumnHeader?.onHeaderItemClickListener = { _, index ->
             // 点击表头排序
             mBinding?.frozenColumnHeader?.headerData?.let { list ->
                 val item = list.getOrNull(index)?.takeIf { it.sort != null } ?: return@let
@@ -251,6 +252,9 @@ class Watchlist1Fragment: Fragment() {
         // 关闭动画，避免刷新时触发涨跌更新动画
         showUpdateAnimation(false)
         mBinding?.frozenColumnList?.submitList(list) {
+            // 刷新完成后，将列表滚动到顶部
+            mBinding?.frozenColumnList?.scrollToPosition(0)
+            // 刷新完成后，延迟 800ms 恢复动画
             animatorJob?.cancel()
             animatorJob = viewLifecycleOwnerLiveData.value?.lifecycleScope?.launch {
                 delay(800)

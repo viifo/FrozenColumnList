@@ -6,6 +6,7 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.ViewConfiguration
 import androidx.annotation.IdRes
+import androidx.appcompat.widget.LinearLayoutCompat
 import androidx.core.content.withStyledAttributes
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
@@ -26,6 +27,12 @@ class FrozenColumnList @JvmOverloads constructor(
     attrs: AttributeSet? = null,
     defStyleAttr: Int = 0
 ) : RecyclerView(context, attrs, defStyleAttr) {
+
+    /** 视图宽度, 默认值为 80dp */
+    var itemWidth: Int = LinearLayoutCompat.LayoutParams.WRAP_CONTENT
+
+    /** 冻结(固定)视图宽度, 默认值为 120dp */
+    var itemFrozenWidth: Int = LinearLayoutCompat.LayoutParams.WRAP_CONTENT
 
     /** 越界回弹阻尼系数，默认为 0.6f */
     var overScrollDamping = 0.0f
@@ -48,13 +55,13 @@ class FrozenColumnList @JvmOverloads constructor(
         }
 
     /** 最大越界距离（像素, 默认 80dp） */
-    var maxOverScrollThreshold: Int = 0
+    var maxOverScrollDistance: Int = 0
         get() = frozenColumnLayoutManager
-            ?.maxOverScrollThreshold
+            ?.maxOverScrollDistance
             ?: context.dp2px(FrozenColumConfig.DEFAULT_MAX_OVER_SCROLL_THRESHOLD_DP)
         set(value) {
             field = value
-            frozenColumnLayoutManager?.maxOverScrollThreshold = value
+            frozenColumnLayoutManager?.maxOverScrollDistance = value
         }
 
     /** 是否允许水平滚动，默认为 true */
@@ -73,10 +80,10 @@ class FrozenColumnList @JvmOverloads constructor(
 
     /** 触发阈值（像素） */
     private val touchSlop by lazy { ViewConfiguration.get(context).scaledTouchSlop }
-    /** 是否已处理触摸冲突解决策略 */
-    private var setupTouchConflictResolution = false
+    /** 是否处理 ViewPager2 滑动冲突 */
+    private var setupViewPager2TouchConflictResolution = false
     /** 最大越界距离（像素, 默认 80dp） */
-    private var prevMaxOverScrollThreshold = context.dp2px(80)
+    private var prevMaxOverScrollDistance = context.dp2px(80)
 
     /** 记录触摸事件的初始坐标 */
     private var startX = 0f
@@ -91,6 +98,8 @@ class FrozenColumnList @JvmOverloads constructor(
         frozenColumnLayoutManager?.frozenColumnCount = provider.getFrozenColumnCount()
         adapter = provider.getAdapter().also {
             genericStockAdapter = it
+            it.defaultItemWidth = itemWidth
+            it.defaultItemFrozenWidth = itemFrozenWidth
             it.setupEmptyView(context, provider.createEmptyView(context))
             it.setupFooterView(context, provider.createFooterView(context))
         }
@@ -178,16 +187,6 @@ class FrozenColumnList @JvmOverloads constructor(
     }
 
     /**
-     * 获取指定位置的 Item 数据
-     * @param position Item 位置
-     * @return Item 数据
-     */
-    @Suppress("UNCHECKED_CAST")
-    fun <T: FrozenColumnData> getItem(position: Int): T? {
-        return (adapter as? ListAdapter<T, *>)?.currentList?.getOrNull(position)
-    }
-
-    /**
      * 手动同步表头滚动偏移量
      */
     fun syncHeaderOffset(header: FrozenColumnHeader?) {
@@ -246,23 +245,34 @@ class FrozenColumnList @JvmOverloads constructor(
      * 获取当前绑定的数据列表
      * @return 当前绑定的数据列表
      */
-    fun getData(): List<FrozenColumnData>? {
-        return getFrozenColumnAdapter()?.currentList
+    @Suppress("UNCHECKED_CAST")
+    fun <T: FrozenColumnData> getData(): List<T>? {
+        return (adapter as? ListAdapter<T, *>)?.currentList
     }
 
     /**
-     * 处理 ViewPager2 嵌套冲突
+     * 获取指定位置的 Item 数据
+     * @param position Item 位置
+     * @return Item 数据
      */
-    fun setupTouchConflictResolution(value: Boolean) {
+    @Suppress("UNCHECKED_CAST")
+    fun <T: FrozenColumnData> getItem(position: Int): T? {
+        return getData<T>()?.getOrNull(position)
+    }
+
+    /**
+     * 是否启用 ViewPager2 嵌套冲突解决方案， 默认 false
+     */
+    fun setupViewPager2TouchConflictResolution(value: Boolean) {
         if (value) {
             getFrozenColumnLayoutManager()?.let {
-                prevMaxOverScrollThreshold = it.maxOverScrollThreshold
-                it.maxOverScrollThreshold = 0
+                prevMaxOverScrollDistance = it.maxOverScrollDistance
+                it.maxOverScrollDistance = 0
             }
         } else {
-            getFrozenColumnLayoutManager()?.maxOverScrollThreshold = prevMaxOverScrollThreshold
+            getFrozenColumnLayoutManager()?.maxOverScrollDistance = prevMaxOverScrollDistance
         }
-        setupTouchConflictResolution = value
+        setupViewPager2TouchConflictResolution = value
     }
 
     /**
@@ -281,16 +291,24 @@ class FrozenColumnList @JvmOverloads constructor(
      */
     private fun initAttrs(context: Context, attrs: AttributeSet?) {
         context.withStyledAttributes(attrs, R.styleable.FrozenColumnList) {
+            itemWidth = getDimensionPixelSize(
+                R.styleable.FrozenColumnList_fclItemWidth,
+                context.dp2px(FrozenColumConfig.DEFAULT_COLUMN_WITH_DP)
+            )
+            itemFrozenWidth = getDimensionPixelSize(
+                R.styleable.FrozenColumnList_fclItemFrozenWidth,
+                context.dp2px(FrozenColumConfig.DEFAULT_FROZEN_COLUMN_WITH_DP)
+            )
             overScrollDamping = getFloat(
-                R.styleable.FrozenColumnList_overScrollDamping,
+                R.styleable.FrozenColumnList_fclOverScrollDamping,
                 FrozenColumConfig.DEFAULT_OVER_SCROLL_DAMPING
             )
             overScrollAnimatorThreshold = getDimensionPixelSize(
-                R.styleable.FrozenColumnList_overScrollAnimatorThreshold,
+                R.styleable.FrozenColumnList_fclOverScrollAnimatorThreshold,
                 context.dp2px(FrozenColumConfig.DEFAULT_OVER_SCROLL_ANIMATOR_THRESHOLD_DP)
             )
-            maxOverScrollThreshold = getDimensionPixelSize(
-                R.styleable.FrozenColumnList_maxOverScrollThreshold,
+            maxOverScrollDistance = getDimensionPixelSize(
+                R.styleable.FrozenColumnList_fclMaxOverScrollDistance,
                 context.dp2px(FrozenColumConfig.DEFAULT_COLUMN_WITH_DP)
             )
         }
@@ -312,7 +330,7 @@ class FrozenColumnList @JvmOverloads constructor(
      * 处理 ViewPager2 嵌套冲突
      */
     override fun dispatchTouchEvent(e: MotionEvent): Boolean {
-        if (!setupTouchConflictResolution){
+        if (!setupViewPager2TouchConflictResolution){
             return super.dispatchTouchEvent(e)
         }
         when (e.action) {

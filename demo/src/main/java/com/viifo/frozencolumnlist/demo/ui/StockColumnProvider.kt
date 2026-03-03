@@ -70,17 +70,17 @@ class StockColumnProvider : DefaultColumnProvider<StockModel>() {
         }
     }
 
-    override fun getColumnWidths(parent: ViewGroup, size: Int): List<Int> {
-        return (0 until size).map {
-            if (it == 0) {
-                // 第一列 (固定) 宽度为120dp
-                parent.context.dp2px(120)
-            } else {
-                // 其他列 (可滚动) 宽度为80dp
-                parent.context.dp2px(80)
-            }
-        }
-    }
+//    override fun getColumnWidths(parent: ViewGroup, size: Int): List<Int> {
+//        return (0 until size).map {
+//            if (it == 0) {
+//                // 第一列 (固定) 宽度为120dp
+//                parent.context.dp2px(120)
+//            } else {
+//                // 其他列 (可滚动) 宽度为80dp
+//                parent.context.dp2px(80)
+//            }
+//        }
+//    }
 
     override fun createRowFrozenViews(parent: ViewGroup, viewType: Int, size: Int): List<View> {
         val paddingVertical = parent.context.dp2px(8)

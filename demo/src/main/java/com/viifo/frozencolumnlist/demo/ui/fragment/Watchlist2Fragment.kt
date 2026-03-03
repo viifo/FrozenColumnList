@@ -58,7 +58,7 @@ class Watchlist2Fragment: Fragment() {
         mBinding?.refreshLayout?.setEnableNestedScroll(false)
 
         // 初始化 FrozenColumnList
-        // mBinding?.frozenColumnList?.setupTouchConflictResolution(true)
+        // mBinding?.frozenColumnList?.setupViewPager2TouchConflictResolution(true)
         val provider = StockColumnProvider()
         mBinding?.frozenColumnList?.setProvider(provider)
         mBinding?.frozenColumnList?.attachHeader(mBinding?.frozenColumnHeader)
@@ -85,7 +85,7 @@ class Watchlist2Fragment: Fragment() {
         }
         // 初始化 FrozenColumnHeader
         mBinding?.frozenColumnHeader?.setProvider(provider)
-        mBinding?.frozenColumnHeader?.onHeaderClickListener = { _, index ->
+        mBinding?.frozenColumnHeader?.onHeaderItemClickListener = { _, index ->
             // 点击表头排序
             mBinding?.frozenColumnHeader?.headerData?.let { list ->
                 val item = list.getOrNull(index)?.takeIf { it.sort != null } ?: return@let

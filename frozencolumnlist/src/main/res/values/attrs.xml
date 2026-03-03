@@ -2,13 +2,13 @@
 <resources>
     <declare-styleable name="FrozenColumnHeader">
         <!-- item 视图是否占满高度, 默认值为 true -->
-        <attr name="itemFullHeight" format="boolean" />
+        <attr name="fchItemFullHeight" format="boolean" />
         <!-- item 冻结(固定)视图宽度，默认值为 120dp -->
-        <attr name="itemFrozenWidth" format="dimension" />
+        <attr name="fchItemFrozenWidth" format="dimension" />
         <!-- item 非冻结(可滚动)视图宽度，默认值为 80dp -->
-        <attr name="itemWidth" format="dimension" />
+        <attr name="fchItemWidth" format="dimension" />
         <!-- item 视图对齐方式, 默认值为 start | top -->
-        <attr name="itemGravity">
+        <attr name="fchItemGravity">
             <flag name="top" value="0x30" />
             <flag name="bottom" value="0x50" />
             <flag name="left" value="0x03" />
@@ -20,11 +20,15 @@
     </declare-styleable>
 
     <declare-styleable name="FrozenColumnList">
+        <!-- item 冻结(固定)视图宽度，默认值为 120dp -->
+        <attr name="fclItemFrozenWidth" format="dimension" />
+        <!-- item 非冻结(可滚动)视图宽度，默认值为 80dp -->
+        <attr name="fclItemWidth" format="dimension" />
         <!-- 越界回弹阻尼系数，默认值为 0.6f -->
-        <attr name="overScrollDamping" format="float" />
+        <attr name="fclOverScrollDamping" format="float" />
         <!-- 越界回弹动画触发阈值，默认值为 10dp -->
-        <attr name="overScrollAnimatorThreshold" format="dimension" />
-        <!-- 最大越界回弹阈值，默认值为 80dp -->
-        <attr name="maxOverScrollThreshold" format="dimension" />
+        <attr name="fclOverScrollAnimatorThreshold" format="dimension" />
+        <!-- 最大越界回弹距离，默认值为 80dp -->
+        <attr name="fclMaxOverScrollDistance" format="dimension" />
     </declare-styleable>
 </resources>

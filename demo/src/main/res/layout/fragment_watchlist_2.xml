@@ -63,7 +63,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="35dp"
                 android:background="@color/white"
-                app:itemGravity="center_vertical"/>
+                app:fchItemGravity="center_vertical"/>
 
             <View
                 android:layout_width="match_parent"

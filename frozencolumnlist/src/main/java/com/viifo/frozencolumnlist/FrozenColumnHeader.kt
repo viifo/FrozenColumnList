@@ -27,7 +27,7 @@ class FrozenColumnHeader @JvmOverloads constructor(
     /** 水平滑动时回调，用于同步列表 */
     var onHorizontalScrollListener: ((MotionEvent) -> Unit)? = null
     /** 表头点击事件 */
-    var onHeaderClickListener: ((view: View, position: Int) -> Unit)? = null
+    var onHeaderItemClickListener: ((view: View, position: Int) -> Unit)? = null
     /** 表头数据 */
     val headerData: MutableList<FrozenHeaderData> = mutableListOf()
 
@@ -88,10 +88,7 @@ class FrozenColumnHeader @JvmOverloads constructor(
      */
     override fun onTouchEvent(event: MotionEvent): Boolean {
         onHorizontalScrollListener?.invoke(event) // 回调水平滚动事件
-        if (event.action == MotionEvent.ACTION_UP) {
-            performClick() // 处理点击事件分发
-        }
-        return true
+        return super.onTouchEvent(event)
     }
 
     /**
@@ -127,14 +124,14 @@ class FrozenColumnHeader @JvmOverloads constructor(
             parent = this,
             size = frozenColumnCount,
             onClick = { view, position ->
-                onHeaderClickListener?.invoke(view, position)
+                onHeaderItemClickListener?.invoke(view, position)
             }
         )
         val scrollHeaders = provider.createScrollableHeader(
             parent = this,
             size = headerData.size - frozenColumnCount,
             onClick = { view, position ->
-                onHeaderClickListener?.invoke(view, frozenColumnCount + position)
+                onHeaderItemClickListener?.invoke(view, frozenColumnCount + position)
             }
         )
         val viewWidths = provider.getColumnWidths(this, headerData.size)
@@ -178,14 +175,14 @@ class FrozenColumnHeader @JvmOverloads constructor(
      */
     private fun initAttrs(context: Context, attrs: AttributeSet?) {
         context.withStyledAttributes(attrs, R.styleable.FrozenColumnHeader) {
-            itemGravity = getInt(R.styleable.FrozenColumnHeader_itemGravity, GravityCompat.START or Gravity.TOP)
-            itemFullHeight = getBoolean(R.styleable.FrozenColumnHeader_itemFullHeight, true)
+            itemGravity = getInt(R.styleable.FrozenColumnHeader_fchItemGravity, GravityCompat.START or Gravity.TOP)
+            itemFullHeight = getBoolean(R.styleable.FrozenColumnHeader_fchItemFullHeight, true)
             itemWidth = getDimensionPixelSize(
-                R.styleable.FrozenColumnHeader_itemWidth,
+                R.styleable.FrozenColumnHeader_fchItemWidth,
                 context.dp2px(FrozenColumConfig.DEFAULT_COLUMN_WITH_DP)
             )
             itemFrozenWidth = getDimensionPixelSize(
-                R.styleable.FrozenColumnHeader_itemFrozenWidth,
+                R.styleable.FrozenColumnHeader_fchItemFrozenWidth,
                 context.dp2px(FrozenColumConfig.DEFAULT_FROZEN_COLUMN_WITH_DP)
             )
         }

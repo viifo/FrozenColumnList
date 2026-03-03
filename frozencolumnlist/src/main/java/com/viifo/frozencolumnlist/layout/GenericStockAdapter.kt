@@ -7,6 +7,7 @@ import android.view.ViewParent
 import android.widget.FrameLayout
 import android.widget.TextView
 import androidx.annotation.IdRes
+import androidx.appcompat.widget.LinearLayoutCompat
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
@@ -40,6 +41,12 @@ open class GenericStockAdapter<T: FrozenColumnData>(
     var onFooterViewClickListener: ((View) -> Unit)? = null
     /** FooterView 子 View 点击事件监听回调 */
     var onFooterViewChildClickListener: ((View) -> Unit)? = null
+
+    /** 默认 Item 视图宽度 */
+    var defaultItemWidth: Int = LinearLayoutCompat.LayoutParams.WRAP_CONTENT
+
+    /** 默认 Item 冻结(固定)视图宽度*/
+    var defaultItemFrozenWidth: Int = LinearLayoutCompat.LayoutParams.WRAP_CONTENT
 
     /** 子项点击事件监听的 View ID 集合 */
     private val childClickViewIds = LinkedHashSet<Int>()
@@ -111,14 +118,14 @@ open class GenericStockAdapter<T: FrozenColumnData>(
                 frozenViews.forEachIndexed { index, view ->
                     rowContainer.addView(
                         view,
-                        viewWidths.getOrNull(index) ?: parent.context.dp2px(FrozenColumConfig.DEFAULT_FROZEN_COLUMN_WITH_DP),
+                        viewWidths.getOrNull(index) ?: defaultItemFrozenWidth,
                         ViewGroup.LayoutParams.MATCH_PARENT
                     )
                 }
                 scrollViews.forEachIndexed { index, view ->
                     rowContainer.addView(
                         view,
-                        viewWidths.getOrNull(frozenViews.size + index) ?: parent.context.dp2px(FrozenColumConfig.DEFAULT_COLUMN_WITH_DP),
+                        viewWidths.getOrNull(frozenViews.size + index) ?: defaultItemWidth,
                         ViewGroup.LayoutParams.MATCH_PARENT
                     )
                 }

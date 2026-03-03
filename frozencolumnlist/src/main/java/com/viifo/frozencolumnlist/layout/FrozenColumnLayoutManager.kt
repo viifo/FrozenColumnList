@@ -34,7 +34,7 @@ class FrozenColumnLayoutManager(
     /** 越界回弹动画触发阈值（像素, 默认 10dp） */
     internal var overScrollAnimatorThreshold = context.dp2px(10)
     /** 最大越界距离（像素, 默认 80dp） */
-    internal var maxOverScrollThreshold = context.dp2px(80)
+    internal var maxOverScrollDistance = context.dp2px(80)
     /** 越界回弹动画, 默认使用 [DefaultSpringBackAnimatorProvider], 设置为 null 禁用 */
     internal var springBackAnimatorProvider: SpringBackAnimatorProvider? = DefaultSpringBackAnimatorProvider()
 
@@ -212,20 +212,20 @@ class FrozenColumnLayoutManager(
             val overScroll = -nextOffset
             if (isFling.get() && (overScroll <= overScrollAnimatorThreshold)) {
                 horizontalOffset = 0
-            } else if (overScroll < maxOverScrollThreshold) {
+            } else if (overScroll < maxOverScrollDistance) {
                 horizontalOffset += (dx * overScrollDamping).toInt()
             } else {
-                horizontalOffset = -maxOverScrollThreshold
+                horizontalOffset = -maxOverScrollDistance
             }
         } else {
             // 手指向左滑动滑动越界（滑动到最后一列）
             val overScroll = nextOffset - maxScrollWidth
             if (isFling.get() && (overScroll <= overScrollAnimatorThreshold)) {
                 horizontalOffset = maxScrollWidth
-            } else if (overScroll < maxOverScrollThreshold) {
+            } else if (overScroll < maxOverScrollDistance) {
                 horizontalOffset += (dx * overScrollDamping).toInt()
             } else {
-                horizontalOffset = maxScrollWidth + maxOverScrollThreshold
+                horizontalOffset = maxScrollWidth + maxOverScrollDistance
             }
         }
         // 计算实际的位移量

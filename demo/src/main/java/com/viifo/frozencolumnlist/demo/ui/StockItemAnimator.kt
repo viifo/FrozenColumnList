@@ -5,6 +5,7 @@ import android.animation.AnimatorListenerAdapter
 import android.animation.ValueAnimator
 import android.content.Context
 import android.graphics.Color
+import android.util.Log
 import android.view.ViewGroup
 import androidx.appcompat.widget.AppCompatTextView
 import androidx.core.view.children
@@ -73,4 +74,16 @@ class StockItemAnimator(context: Context) : DefaultItemAnimator() {
         }
         return super.animateChange(oldHolder, newHolder, preInfo, postInfo)
     }
+
+    override fun animateMove(
+        holder: RecyclerView.ViewHolder?,
+        fromX: Int,
+        fromY: Int,
+        toX: Int,
+        toY: Int
+    ): Boolean {
+        // 不处理移动动画
+        return false
+    }
+
 }
