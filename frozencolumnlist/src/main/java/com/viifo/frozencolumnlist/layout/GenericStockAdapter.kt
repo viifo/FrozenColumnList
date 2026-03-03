@@ -11,10 +11,8 @@ import androidx.appcompat.widget.LinearLayoutCompat
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
-import com.viifo.frozencolumnlist.FrozenColumConfig
 import com.viifo.frozencolumnlist.layout.GenericStockAdapter.BaseViewHolder
 import com.viifo.frozencolumnlist.data.FrozenColumnData
-import com.viifo.frozencolumnlist.ext.dp2px
 import com.viifo.frozencolumnlist.provider.ColumnProvider
 import java.util.LinkedHashSet
 
@@ -109,10 +107,10 @@ open class GenericStockAdapter<T: FrozenColumnData>(
                 // 可滚动列数量
                 val scrollableColumnCount = getItem(0).columnCount - frozenColumnCount
                 // 外部行容器，使用 LinearLayoutCompat 水平排列
-                val rowContainer = provider.createRowContainer(parent, viewType)
+                val rowContainer = provider.createItemRowContainer(parent, viewType)
                 // 调用 Provider 预生成 View
-                val frozenViews = provider.createRowFrozenViews(rowContainer, viewType, frozenColumnCount)
-                val scrollViews = provider.createRowScrollableViews(rowContainer, viewType, scrollableColumnCount)
+                val frozenViews = provider.createItemRowFrozenViews(rowContainer, viewType, frozenColumnCount)
+                val scrollViews = provider.createItemRowScrollableViews(rowContainer, viewType, scrollableColumnCount)
                 val viewWidths = provider.getColumnWidths(rowContainer, frozenViews.size + scrollViews.size)
                 // 将 View 添加到外部行容器
                 frozenViews.forEachIndexed { index, view ->
@@ -291,13 +289,13 @@ open class GenericStockAdapter<T: FrozenColumnData>(
     ) : BaseViewHolder<T>(itemView) {
 
         fun bind(data: T) {
-            provider.bindRowFrozenViews(this, data, emptyList())
-            provider.bindRowScrollableViews(this, data, emptyList())
+            provider.bindItemRowFrozenViews(this, data, emptyList())
+            provider.bindItemRowScrollableViews(this, data, emptyList())
         }
 
         fun diffBind(data: T, payloads: List<Any?>) {
-            provider.bindRowFrozenViews(this, data, payloads)
-            provider.bindRowScrollableViews(this, data, payloads)
+            provider.bindItemRowFrozenViews(this, data, payloads)
+            provider.bindItemRowScrollableViews(this, data, payloads)
         }
 
         fun <V: View> getView(@IdRes id: Int): V = itemView.findViewById(id)

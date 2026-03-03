@@ -62,12 +62,12 @@
        android:layout_height="match_parent"/>
    ```
 
-4. 自定义 `ColumnProvider`，告诉 `FrozenColumnList` 列表如何配置表头和 item，示例请参考 [StockColumnProvider](https://github.com/viifo/FrozenColumnList/blob/master/frozencolumnlist/src/main/java/com/viifo/frozencolumnlist/demo/ui/StockColumnProvider.kt) 
+4. 自定义 [ColumnProvider](https://github.com/viifo/FrozenColumnList/blob/master/frozencolumnlist/src/main/java/com/viifo/frozencolumnlist/provider/ColumnProvider.kt)，告诉 `FrozenColumnList` 列表如何配置表头和 item，示例请参考 [StockColumnProvider](https://github.com/viifo/FrozenColumnList/blob/master/demo/src/main/java/com/viifo/frozencolumnlist/demo/ui/StockColumnProvider.kt) 
 
    ```kotlin
    class CustomProvider : DefaultColumnProvider<StockModel> {
    
-       override fun createRowFrozenViews(
+       override fun createItemRowFrozenViews(
            parent: ViewGroup,
            viewType: Int,
            size: Int
@@ -99,7 +99,7 @@
            }
        }
    
-       override fun createRowScrollableViews(
+       override fun createItemRowScrollableViews(
            parent: ViewGroup,
            viewType: Int,
            size: Int
@@ -122,7 +122,7 @@
            }
        }
    
-       override fun bindRowFrozenViews(
+       override fun bindItemRowFrozenViews(
            holder: GenericStockAdapter.GenericViewHolder<StockModel>,
            data: StockModel,
            payloads: List<Any?>
@@ -132,7 +132,7 @@
            // ...
        }
    
-       override fun bindRowScrollableViews(
+       override fun bindItemRowScrollableViews(
            holder: GenericStockAdapter.GenericViewHolder<StockModel>,
            data: StockModel,
            payloads: List<Any?>
@@ -154,7 +154,7 @@
    }
    ```
 
-6. 设置 `FrozenColumnList`，其中的 [StockItemAnimator](https://github.com/viifo/FrozenColumnList/blob/master/frozencolumnlist/src/main/java/com/viifo/frozencolumnlist/demo/ui/StockItemAnimator.kt) 用于根据股票的涨跌状态添加 Item 更新闪烁效果
+6. 设置 `FrozenColumnList`，其中的 [StockItemAnimator](https://github.com/viifo/FrozenColumnList/blob/master/demo/src/main/java/com/viifo/frozencolumnlist/demo/ui/StockItemAnimator.kt) 用于根据股票的涨跌状态添加 Item 更新闪烁效果
 
    ```kotlin
    // 为 FrozenColumnList 设置 ColumnProvider
@@ -230,6 +230,26 @@
 
 
 
+### ColumnProvider Method
+
+|             name             |                format                 |                         description                          |
+|:----------------------------:| :-----------------------------------: | :----------------------------------------------------------: |
+|          getAdapter          |          GenericStockAdapter          | 指定 Adapter, 默认使用 [GenericStockAdapter](https://github.com/viifo/FrozenColumnList/blob/master/frozencolumnlist/src/main/java/com/viifo/frozencolumnlist/layout/GenericStockAdapter.kt) |
+|       createEmptyView        |                 View                  |                          创建空视图                          |
+|       createFooterView       |                 View                  |                         创建底部视图                         |
+|       getColumnWidths        |               List<Int>               |        获取各列宽度（包括固定列和可滚动列，单位像素）        |
+|      createFrozenHeader      |              List<View>               |                 创建固定列的表头子 View 列表                 |
+|    createScrollableHeader    |              List<View>               |                 创建可滚动列表头子 View 列表                 |
+|     bindFrozenHeaderView     |       (View, FrozenHeaderData)        |             绑定固定列表头数据到对应的表头 View              |
+|   bindScrollableHeaderView   |       (View, FrozenHeaderData)        |            绑定可滚动列表头数据到对应的表头 View             |
+|    createItemRowContainer    |               ViewGroup               |               创建每个 item 对应的行 View 容器               |
+|   createItemRowFrozenViews   |              List<View>               |           创建每个 item 对应的固定列的子 View 列表           |
+| createItemRowScrollableViews |              List<View>               |          创建每个 item 对应的可滚动列的子 View 列表          |
+|    bindItemRowFrozenViews    | (GenericViewHolder<T>, T,List<Any?> ) |         绑定每个 item 对应的固定列数据到对应的 View          |
+|  bindItemRowScrollableViews  | (GenericViewHolder<T>, T,List<Any?> ) |        绑定每个 item 对应的可滚动列数据到对应的 View         |
+
+
+
 ### FrozenColumnHeader Attrs
 
 |        name        |  format   |                         description                          |
@@ -256,7 +276,7 @@
 
 ## 混淆
 
-`FrozenColumnList` 不需要添加混淆过滤代码，并且已经混淆测试通过。
+不需要添加混淆过滤代码，并且已经混淆测试通过。
 
 
 

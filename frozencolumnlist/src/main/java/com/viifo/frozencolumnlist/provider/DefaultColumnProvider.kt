@@ -88,7 +88,7 @@ abstract class  DefaultColumnProvider<T : FrozenColumnData> : ColumnProvider<T> 
         }
     }
 
-    override fun createRowContainer(parent: ViewGroup, viewType: Int): ViewGroup {
+    override fun createItemRowContainer(parent: ViewGroup, viewType: Int): ViewGroup {
         return LinearLayoutCompat(parent.context).apply {
             layoutParams = RecyclerView.LayoutParams(
                 RecyclerView.LayoutParams.MATCH_PARENT,

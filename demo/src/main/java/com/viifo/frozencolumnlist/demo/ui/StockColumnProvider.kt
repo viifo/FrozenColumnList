@@ -70,19 +70,19 @@ class StockColumnProvider : DefaultColumnProvider<StockModel>() {
         }
     }
 
-//    override fun getColumnWidths(parent: ViewGroup, size: Int): List<Int> {
-//        return (0 until size).map {
-//            if (it == 0) {
-//                // 第一列 (固定) 宽度为120dp
-//                parent.context.dp2px(120)
-//            } else {
-//                // 其他列 (可滚动) 宽度为80dp
-//                parent.context.dp2px(80)
-//            }
-//        }
-//    }
+    override fun getColumnWidths(parent: ViewGroup, size: Int): List<Int> {
+        return (0 until size).map {
+            if (it == 0) {
+                // 第一列 (固定) 宽度为120dp
+                parent.context.dp2px(120)
+            } else {
+                // 其他列 (可滚动) 宽度为80dp
+                parent.context.dp2px(80)
+            }
+        }
+    }
 
-    override fun createRowFrozenViews(parent: ViewGroup, viewType: Int, size: Int): List<View> {
+    override fun createItemRowFrozenViews(parent: ViewGroup, viewType: Int, size: Int): List<View> {
         val paddingVertical = parent.context.dp2px(8)
         return (0 until size).map {
             LinearLayoutCompat(parent.context).apply {
@@ -109,7 +109,7 @@ class StockColumnProvider : DefaultColumnProvider<StockModel>() {
         }
     }
 
-    override fun createRowScrollableViews(parent: ViewGroup, viewType: Int, size: Int): List<View> {
+    override fun createItemRowScrollableViews(parent: ViewGroup, viewType: Int, size: Int): List<View> {
         // 可滚动列 (动态设置，eg.这里设置 9 列)
         val typedArray = parent.context.resources.obtainTypedArray(R.array.column_ids)
         val list = (0 until size).map { index ->
@@ -131,7 +131,7 @@ class StockColumnProvider : DefaultColumnProvider<StockModel>() {
         return list
     }
 
-    override fun bindRowFrozenViews(
+    override fun bindItemRowFrozenViews(
         holder: GenericStockAdapter.GenericViewHolder<StockModel>,
         data: StockModel,
         payloads: List<Any?>
@@ -141,7 +141,7 @@ class StockColumnProvider : DefaultColumnProvider<StockModel>() {
         holder.setText(R.id.item_tv_code, data.code)
     }
 
-    override fun bindRowScrollableViews(
+    override fun bindItemRowScrollableViews(
         holder: GenericStockAdapter.GenericViewHolder<StockModel>,
         data: StockModel,
         payloads: List<Any?>

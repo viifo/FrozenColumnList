@@ -62,12 +62,12 @@ Efficiently create a stock watchlist with a fixed left column and a swipeable ri
        android:layout_height="match_parent"/>
    ```
 
-4. A custom `ColumnProvider` tells the `FrozenColumnList` how to configure the list headers and items. See [StockColumnProvider](https://github.com/viifo/FrozenColumnList/blob/master/frozencolumnlist/src/main/java/com/viifo/frozencolumnlist/demo/ui/StockColumnProvider.kt) for an example.
+4. A custom  [ColumnProvider](https://github.com/viifo/FrozenColumnList/blob/master/frozencolumnlist/src/main/java/com/viifo/frozencolumnlist/provider/ColumnProvider.kt) tells the `FrozenColumnList` how to configure the list headers and items. See [StockColumnProvider](https://github.com/viifo/FrozenColumnList/blob/master/demo/src/main/java/com/viifo/frozencolumnlist/demo/ui/StockColumnProvider.kt) for an example.
 
    ```kotlin
    class CustomProvider : DefaultColumnProvider<StockModel> {
    
-       override fun createRowFrozenViews(
+       override fun createItemRowFrozenViews(
            parent: ViewGroup,
            viewType: Int,
            size: Int
@@ -100,7 +100,7 @@ Efficiently create a stock watchlist with a fixed left column and a swipeable ri
            }
        }
    
-       override fun createRowScrollableViews(
+       override fun createItemRowScrollableViews(
            parent: ViewGroup,
            viewType: Int,
            size: Int
@@ -124,7 +124,7 @@ Efficiently create a stock watchlist with a fixed left column and a swipeable ri
            }
        }
    
-       override fun bindRowFrozenViews(
+       override fun bindItemRowFrozenViews(
            holder: GenericStockAdapter.GenericViewHolder<StockModel>,
            data: StockModel,
            payloads: List<Any?>
@@ -134,7 +134,7 @@ Efficiently create a stock watchlist with a fixed left column and a swipeable ri
            // ...
        }
    
-       override fun bindRowScrollableViews(
+       override fun bindItemRowScrollableViews(
            holder: GenericStockAdapter.GenericViewHolder<StockModel>,
            data: StockModel,
            payloads: List<Any?>
@@ -156,7 +156,7 @@ Efficiently create a stock watchlist with a fixed left column and a swipeable ri
    }
    ```
 
-6. Configure `FrozenColumnList`, where the [StockItemAnimator](https://github.com/viifo/FrozenColumnList/blob/master/frozencolumnlist/src/main/java/com/viifo/frozencolumnlist/demo/ui/StockItemAnimator.kt) is used to add items and update the blinking effect based on the stock's price movement.
+6. Configure `FrozenColumnList`, where the [StockItemAnimator](https://github.com/viifo/FrozenColumnList/blob/master/demo/src/main/java/com/viifo/frozencolumnlist/demo/ui/StockItemAnimator.kt) is used to add items and update the blinking effect based on the stock's price movement.
 
    ```kotlin
    // Set the ColumnProvider for FrozenColumnList
@@ -229,6 +229,26 @@ Efficiently create a stock watchlist with a fixed left column and a swipeable ri
 |                getData                 | List<out FrozenColumnData> |             Get the list of currently bound data             |
 |                getItem                 |    out FrozenColumnData    |         Retrieve Item data from a specified location         |
 | setupViewPager2TouchConflictResolution |          boolean           | Enable ViewPager2 nesting conflict resolution. The default is false. Enabling this will disable horizontal bounce. |
+
+
+
+### ColumnProvider Method
+
+|             name             |                format                 |                         description                          |
+| :--------------------------: | :-----------------------------------: | :----------------------------------------------------------: |
+|          getAdapter          |          GenericStockAdapter          | Specify the Adapter, the default is [GenericStockAdapter](https://github.com/viifo/FrozenColumnList/blob/master/frozencolumnlist/src/main/java/com/viifo/frozencolumnlist/layout/GenericStockAdapter.kt) |
+|       createEmptyView        |                 View                  |                     Create an empty view                     |
+|       createFooterView       |                 View                  |                      Create bottom view                      |
+|       getColumnWidths        |               List<Int>               | Get the width of each column (including fixed and scrollable columns, in pixels). |
+|      createFrozenHeader      |              List<View>               |     Create a list of header subviews with fixed columns.     |
+|    createScrollableHeader    |              List<View>               |          Create a scrollable list header View list           |
+|     bindFrozenHeaderView     |       (View, FrozenHeaderData)        | Bind fixed list header data to the corresponding table header View |
+|   bindScrollableHeaderView   |       (View, FrozenHeaderData)        | Bind scrollable list header data to the corresponding list header View |
+|    createItemRowContainer    |               ViewGroup               |          Create a row View container for each item.          |
+|   createItemRowFrozenViews   |              List<View>               | Create a list of child views with a fixed column for each item. |
+| createItemRowScrollableViews |              List<View>               | Create a list of child views for each item's scrollable column. |
+|    bindItemRowFrozenViews    | (GenericViewHolder<T>, T,List<Any?> ) | Bind the fixed column data for each item to the corresponding View. |
+|  bindItemRowScrollableViews  | (GenericViewHolder<T>, T,List<Any?> ) | Bind the scrollable column data for each item to the corresponding View. |
 
 
 
