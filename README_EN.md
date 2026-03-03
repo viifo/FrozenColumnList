@@ -8,6 +8,11 @@ Efficiently create a stock watchlist with a fixed left column and a swipeable ri
 
 
 
+## Demo
+Download [APK-Demo](https://github.com/viifo/FrozenColumnList/releases)
+
+
+
 ## Preview
 
 |                 Sliding effect                  |               Horizontal rebound                |

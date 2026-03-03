@@ -8,6 +8,11 @@
 
 
 
+## Demo
+下载 [APK-Demo](https://github.com/viifo/FrozenColumnList/releases)
+
+
+
 ## 预览
 
 |                      滑动效果                       |                     水平越界回弹                      |
