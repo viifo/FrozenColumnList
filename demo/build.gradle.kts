@@ -18,9 +18,29 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    signingConfigs {
+        create("release") {
+            storeFile = rootProject.file("test.jks")
+            storePassword = "123456"
+            keyAlias = "frozenColumnList"
+            keyPassword = "123456"
+            enableV4Signing = true
+        }
+    }
+
     buildTypes {
         release {
+            isMinifyEnabled = true
+            signingConfig = signingConfigs.getByName("release")
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
+        }
+        getByName("debug")  {
             isMinifyEnabled = false
+            isShrinkResources = false
+            signingConfig = signingConfigs.getByName("release")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -48,8 +68,8 @@ dependencies {
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
 
-    implementation(project(":frozencolumnlist"))
-    // implementation("com.github.viifo:FrozenColumnList:1.0.0")
+    // implementation(project(":frozencolumnlist"))
+    implementation("com.github.viifo:FrozenColumnList:1.0.0")
 
     // 刷新库
     implementation("io.github.scwang90:refresh-layout-kernel:3.0.0-alpha")
