@@ -3,4 +3,4 @@ jdk:
 
 # 只运行库模块的 publish 任务，不运行全局构建
 install:
-  - ./gradlew :FrozenColumnList:publishToMavenLocal -Pgroup=$GROUP -Pversion=$VERSION -x test -x lint
+  - ./gradlew :frozencolumnlist:publishToMavenLocal -Pgroup=$GROUP -Pversion=$VERSION -x test -x lint
