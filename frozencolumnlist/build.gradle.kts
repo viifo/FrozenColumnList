@@ -3,6 +3,10 @@ plugins {
     alias(libs.plugins.maven.publish)
 }
 
+val publicationVersion = providers.gradleProperty("version")
+    .orElse(providers.gradleProperty("VERSION_NAME"))
+    .get()
+
 android {
     namespace = "com.viifo.frozencolumnlist"
     compileSdk {
@@ -45,7 +49,7 @@ publishing {
             }
             groupId = "com.github.viifo"
             artifactId = "FrozenColumnList"
-            version = "1.0.0"
+            version = publicationVersion
         }
     }
 }

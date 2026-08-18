@@ -6,7 +6,6 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.ViewConfiguration
 import androidx.annotation.IdRes
-import androidx.appcompat.widget.LinearLayoutCompat
 import androidx.core.content.withStyledAttributes
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
@@ -14,13 +13,14 @@ import com.viifo.frozencolumnlist.data.FrozenColumnData
 import com.viifo.frozencolumnlist.ext.dp2px
 import com.viifo.frozencolumnlist.layout.FrozenColumnLayoutManager
 import com.viifo.frozencolumnlist.layout.GenericStockAdapter
+import com.viifo.frozencolumnlist.layout.MiddleFrozenColumnLayoutManager
+import com.viifo.frozencolumnlist.layout.MiddleFrozenRowLayout
 import com.viifo.frozencolumnlist.provider.ColumnProvider
 import com.viifo.frozencolumnlist.provider.SpringBackAnimatorProvider
 import kotlin.math.abs
 
 /**
- * 一个支持冻结(固定)列的 RecyclerView 列表
- * 适用于需要固定左侧列，右侧内容可滚动的场景，如股票自选列表等
+ * 统一固定列列表。通过 [FrozenColumnConfig] 支持前 n 列固定或中间 n 列固定。
  */
 class FrozenColumnList @JvmOverloads constructor(
     context: Context,
@@ -28,346 +28,334 @@ class FrozenColumnList @JvmOverloads constructor(
     defStyleAttr: Int = 0
 ) : RecyclerView(context, attrs, defStyleAttr) {
 
-    /** 视图宽度, 默认值为 80dp */
-    var itemWidth: Int = LinearLayoutCompat.LayoutParams.WRAP_CONTENT
+    var columnConfig: FrozenColumnConfig = FrozenColumnConfig()
+        private set
 
-    /** 冻结(固定)视图宽度, 默认值为 120dp */
-    var itemFrozenWidth: Int = LinearLayoutCompat.LayoutParams.WRAP_CONTENT
-
-    /** 越界回弹阻尼系数，默认为 0.6f */
-    var overScrollDamping = 0.0f
-        get() = frozenColumnLayoutManager
-            ?.overScrollDamping
-            ?: FrozenColumConfig.DEFAULT_OVER_SCROLL_DAMPING
-        set(value) {
-            field = value
-            frozenColumnLayoutManager?.overScrollDamping = value
-        }
-
-    /** 越界回弹动画触发阈值（像素, 默认 10dp） */
-    var overScrollAnimatorThreshold = 0
-        get() = frozenColumnLayoutManager
-            ?.overScrollAnimatorThreshold
-            ?: context.dp2px(FrozenColumConfig.DEFAULT_OVER_SCROLL_ANIMATOR_THRESHOLD_DP)
-        set(value) {
-            field = value
-            frozenColumnLayoutManager?.overScrollAnimatorThreshold = value
-        }
-
-    /** 最大越界距离（像素, 默认 80dp） */
-    var maxOverScrollDistance: Int = 0
-        get() = frozenColumnLayoutManager
-            ?.maxOverScrollDistance
-            ?: context.dp2px(FrozenColumConfig.DEFAULT_MAX_OVER_SCROLL_THRESHOLD_DP)
-        set(value) {
-            field = value
-            frozenColumnLayoutManager?.maxOverScrollDistance = value
-        }
-
-    /** 是否允许水平滚动，默认为 true */
-    var canScrollHorizontally = true
-        get() = frozenColumnLayoutManager?.canScrollHorizontally ?: true
-        set(value) {
-            field = value
-            frozenColumnLayoutManager?.canScrollHorizontally = value
-        }
-
+    private var leadingLayoutManager: FrozenColumnLayoutManager? = null
+    private var middleLayoutManager: MiddleFrozenColumnLayoutManager? = null
+    private var genericStockAdapter: GenericStockAdapter<out FrozenColumnData>? = null
+    private var attachedHeader: FrozenColumnHeader? = null
     var provider: ColumnProvider<out FrozenColumnData>? = null
         private set
 
-    private var genericStockAdapter: GenericStockAdapter<out FrozenColumnData>? = null
-    private var frozenColumnLayoutManager: FrozenColumnLayoutManager? = null
+    private val touchSlop = ViewConfiguration.get(context).scaledTouchSlop
+    var horizontalScrollThreshold: Int = touchSlop
+        set(value) { field = value.coerceAtLeast(0) }
 
-    /** 触发阈值（像素） */
-    private val touchSlop by lazy { ViewConfiguration.get(context).scaledTouchSlop }
-    /** 是否处理 ViewPager2 滑动冲突 */
-    private var setupViewPager2TouchConflictResolution = false
-    /** 最大越界距离（像素, 默认 80dp） */
-    private var prevMaxOverScrollDistance = context.dp2px(80)
-
-    /** 记录触摸事件的初始坐标 */
     private var startX = 0f
     private var startY = 0f
+    private var setupViewPager2TouchConflictResolution = false
+    private var prevMaxOverScrollDistance = context.dp2px(80)
+    private val headerLeadingScrollListener: (Int) -> Unit = {
+        attachedHeader?.headerRowView?.let { row -> leadingLayoutManager?.syncColumns(row) }
+    }
+    private val headerMiddleOffsetListener: (Int, Int) -> Unit = { left, right ->
+        attachedHeader?.updateMiddleOffsets(left, right)
+    }
 
-    /**
-     * 为 FrozenColumnList 设置 ColumnProvider
-     * @param provider 列视图提供器
-     */
-    fun <T: FrozenColumnData> setProvider(provider: ColumnProvider<T>) {
-        this@FrozenColumnList.provider = provider
-        frozenColumnLayoutManager?.frozenColumnCount = provider.getFrozenColumnCount()
-        adapter = provider.getAdapter().also {
-            genericStockAdapter = it
-            it.defaultItemWidth = itemWidth
-            it.defaultItemFrozenWidth = itemFrozenWidth
-            it.setupEmptyView(context, provider.createEmptyView(context))
-            it.setupFooterView(context, provider.createFooterView(context))
+    var overScrollDamping: Float = FrozenColumnConfig.DEFAULT_OVER_SCROLL_DAMPING
+        get() = leadingLayoutManager?.overScrollDamping ?: field
+        set(value) {
+            field = value
+            leadingLayoutManager?.overScrollDamping = value
+        }
+
+    var overScrollAnimatorThreshold: Int =
+        context.dp2px(FrozenColumnConfig.DEFAULT_OVER_SCROLL_ANIMATOR_THRESHOLD_DP)
+        get() = leadingLayoutManager?.overScrollAnimatorThreshold
+            ?: field
+        set(value) {
+            field = value
+            leadingLayoutManager?.overScrollAnimatorThreshold = value
+        }
+
+    var maxOverScrollDistance: Int =
+        context.dp2px(FrozenColumnConfig.DEFAULT_MAX_OVER_SCROLL_DISTANCE_DP)
+        get() = leadingLayoutManager?.maxOverScrollDistance
+            ?: field
+        set(value) {
+            field = value
+            leadingLayoutManager?.maxOverScrollDistance = value
+        }
+
+    var canScrollHorizontally: Boolean = true
+        get() = leadingLayoutManager?.canScrollHorizontally
+            ?: middleLayoutManager?.horizontalScrollEnabled
+            ?: field
+        set(value) {
+            field = value
+            leadingLayoutManager?.canScrollHorizontally = value
+            middleLayoutManager?.horizontalScrollEnabled = value
+        }
+
+    init {
+        overScrollMode = OVER_SCROLL_NEVER
+        var initialDamping = FrozenColumnConfig.DEFAULT_OVER_SCROLL_DAMPING
+        var initialAnimatorThreshold =
+            context.dp2px(FrozenColumnConfig.DEFAULT_OVER_SCROLL_ANIMATOR_THRESHOLD_DP)
+        var initialMaxOverScroll =
+            context.dp2px(FrozenColumnConfig.DEFAULT_MAX_OVER_SCROLL_DISTANCE_DP)
+        context.withStyledAttributes(attrs, R.styleable.FrozenColumnList) {
+            initialDamping = getFloat(
+                R.styleable.FrozenColumnList_fclOverScrollDamping,
+                initialDamping
+            )
+            initialAnimatorThreshold = getDimensionPixelSize(
+                R.styleable.FrozenColumnList_fclOverScrollAnimatorThreshold,
+                initialAnimatorThreshold
+            )
+            initialMaxOverScroll = getDimensionPixelSize(
+                R.styleable.FrozenColumnList_fclMaxOverScrollDistance,
+                initialMaxOverScroll
+            )
+            horizontalScrollThreshold = getDimensionPixelSize(
+                R.styleable.FrozenColumnList_fclHorizontalScrollThreshold,
+                touchSlop
+            )
+        }
+        setColumnConfig(columnConfig)
+        overScrollDamping = initialDamping
+        overScrollAnimatorThreshold = initialAnimatorThreshold
+        maxOverScrollDistance = initialMaxOverScroll
+    }
+
+    fun setColumnConfig(config: FrozenColumnConfig) {
+        require(config.frozenColumnPosition != FrozenColumnPosition.END) {
+            "FrozenColumnPosition.END is reserved and not implemented yet"
+        }
+        val previous = columnConfig
+        val structuralChange = layoutManager == null ||
+            previous.frozenColumnPosition != config.frozenColumnPosition ||
+            previous.frozenColumnCount != config.frozenColumnCount ||
+            previous.middleColumnStart != config.middleColumnStart ||
+            previous.frozenViewportStart != config.frozenViewportStart ||
+            previous.visibleColumnCount != config.visibleColumnCount
+        columnConfig = config
+        horizontalScrollThreshold = config.horizontalScrollThreshold ?: horizontalScrollThreshold
+        if (!structuralChange) {
+            middleLayoutManager?.scrollMode = config.scrollMode
+            genericStockAdapter?.columnConfig = config
+            attachedHeader?.setColumnConfig(config)
+            return
+        }
+
+        leadingLayoutManager?.removeHorizontalScrollListener(headerLeadingScrollListener)
+        middleLayoutManager?.removeOffsetListener(headerMiddleOffsetListener)
+        if (config.frozenColumnPosition == FrozenColumnPosition.START) {
+            val manager = FrozenColumnLayoutManager(context).also {
+                it.frozenColumnCount = config.frozenColumnCount
+                it.overScrollDamping = overScrollDamping
+                it.overScrollAnimatorThreshold = overScrollAnimatorThreshold
+                it.maxOverScrollDistance = maxOverScrollDistance
+                it.canScrollHorizontally = canScrollHorizontally
+            }
+            leadingLayoutManager = manager
+            middleLayoutManager = null
+            layoutManager = manager
+        } else {
+            val manager = MiddleFrozenColumnLayoutManager(context).also {
+                it.scrollMode = config.scrollMode
+                it.horizontalScrollEnabled = canScrollHorizontally
+            }
+            middleLayoutManager = manager
+            leadingLayoutManager = null
+            layoutManager = manager
+        }
+        genericStockAdapter?.columnConfig = config
+        attachedHeader?.let(::attachHeader)
+
+        // START/MIDDLE 或固定范围变化时，旧 ViewHolder 的行根类型可能已不再适用。
+        genericStockAdapter?.let { currentAdapter ->
+            adapter = null
+            recycledViewPool.clear()
+            adapter = currentAdapter
         }
     }
 
-    /**
-     * 设置 FrozenColumnList 的数据
-     * @param list 数据列表
-     * @param commitCallback 提交完成回调
-     */
+    fun <T : FrozenColumnData> setProvider(provider: ColumnProvider<T>) {
+        this.provider = provider
+        adapter = GenericStockAdapter(provider).also {
+            it.columnConfig = columnConfig
+            it.setupEmptyView(context, provider.createEmptyView(context))
+            it.setupFooterView(context, provider.createFooterView(context))
+            genericStockAdapter = it
+        }
+    }
+
     @Suppress("UNCHECKED_CAST")
-    fun <T: FrozenColumnData> submitList(list: List<T>, commitCallback: Runnable? = null) {
+    fun <T : FrozenColumnData> submitList(list: List<T>, commitCallback: Runnable? = null) {
         (adapter as? ListAdapter<T, *>)?.submitList(list, commitCallback)
     }
 
-    /**
-     * 绑定表头视图 (同步滚动表头)
-     * @param header 表头视图
-     */
     fun attachHeader(header: FrozenColumnHeader?) {
         if (header == null) return
-        frozenColumnLayoutManager?.addHorizontalScrollListener {
-            frozenColumnLayoutManager?.syncColumns(header)
-        }
-        header.onHorizontalScrollListener = { event ->
-            // 将 Header 的触摸事件转发给 RecyclerView 处理
-            dispatchTouchEvent(event)
-        }
+        leadingLayoutManager?.removeHorizontalScrollListener(headerLeadingScrollListener)
+        middleLayoutManager?.removeOffsetListener(headerMiddleOffsetListener)
+        attachedHeader = header
+        header.setColumnConfig(columnConfig)
+        leadingLayoutManager?.addHorizontalScrollListener(headerLeadingScrollListener)
+        middleLayoutManager?.addOffsetListener(headerMiddleOffsetListener)
+        header.onHorizontalScrollListener = { dispatchTouchEvent(it) }
     }
 
-    /**
-     * 添加子项点击事件监听的 View ID 集合
-     * @param viewIds 子项点击事件监听的 View ID 集合
-     */
-    fun addChildClickViewIds(@IdRes vararg viewIds: Int) {
-        genericStockAdapter?.addChildClickViewIds(*viewIds)
+    fun resetHorizontalOffsets() {
+        leadingLayoutManager?.updateHorizontalOffset(0)
+        middleLayoutManager?.resetOffsets()
     }
 
-    /**
-     * 设置 item 子 view 点击事件监听
-     * @param listener 子 view项点击事件监听回调
-     */
-    fun setOnItemChildClickListener(listener: ((View, position: Int, itemViewType: Int) -> Unit)? = null) {
-        genericStockAdapter?.onItemChildClickListener = listener
+    /** 立即将列表当前偏移同步到指定表头。通常使用 [attachHeader] 即可。 */
+    fun syncHeaderOffset(header: FrozenColumnHeader?) {
+        val row = header?.headerRowView ?: return
+        leadingLayoutManager?.syncColumns(row)
+        middleLayoutManager?.let { header.updateMiddleOffsets(it.leftOffset, it.rightOffset) }
     }
 
-    /**
-     * 设置 Item 点击事件监听
-     * @param listener Item 点击事件监听回调
-     */
-    fun setOnItemClickListener(listener: ((View, position: Int, itemViewType: Int) -> Unit)? = null) {
+    fun updateHorizontalOffset(newOffset: Int) {
+        leadingLayoutManager?.updateHorizontalOffset(newOffset)
+    }
+
+    fun updateHorizontalOffsets(left: Int, right: Int) {
+        middleLayoutManager?.updateOffsets(left, right)
+    }
+
+    fun addHorizontalScrollListener(listener: (Int) -> Unit) {
+        leadingLayoutManager?.addHorizontalScrollListener(listener)
+    }
+
+    fun addMiddleHorizontalScrollListener(listener: (Int, Int) -> Unit) {
+        middleLayoutManager?.addOffsetListener(listener)
+    }
+
+    fun removeHorizontalScrollListener(listener: (Int) -> Unit) {
+        leadingLayoutManager?.removeHorizontalScrollListener(listener)
+    }
+
+    fun setSpringBackAnimatorProvider(provider: SpringBackAnimatorProvider?) {
+        leadingLayoutManager?.springBackAnimatorProvider = provider
+    }
+
+    fun getFrozenColumnLayoutManager(): FrozenColumnLayoutManager? = leadingLayoutManager
+    fun getMiddleFrozenLayoutManager(): MiddleFrozenColumnLayoutManager? = middleLayoutManager
+    fun getFrozenColumnAdapter(): GenericStockAdapter<out FrozenColumnData>? = genericStockAdapter
+
+    @Suppress("UNCHECKED_CAST")
+    fun <T : FrozenColumnData> getData(): List<T>? = (adapter as? ListAdapter<T, *>)?.currentList
+
+    fun <T : FrozenColumnData> getItem(position: Int): T? = getData<T>()?.getOrNull(position)
+
+    fun addChildClickViewIds(@IdRes vararg ids: Int) = genericStockAdapter?.addChildClickViewIds(*ids) ?: Unit
+    fun setOnItemClickListener(listener: ((View, Int, Int) -> Unit)?) {
         genericStockAdapter?.onItemClickListener = listener
     }
-
-    /**
-     * 设置 EmptyView 子 view 点击事件监听
-     * @param listener 子 view项点击事件监听回调
-     */
-    fun setOnEmptyViewChildClickListener(listener: ((View) -> Unit)? = null) {
-        genericStockAdapter?.onEmptyViewChildClickListener = listener
+    fun setOnItemChildClickListener(listener: ((View, Int, Int) -> Unit)?) {
+        genericStockAdapter?.onItemChildClickListener = listener
     }
-
-    /**
-     * 设置 EmptyView 点击事件监听
-     * @param listener Item 点击事件监听回调
-     */
-    fun setOnEmptyViewClickListener(listener: ((View) -> Unit)? = null) {
+    fun setOnEmptyViewClickListener(listener: ((View) -> Unit)?) {
         genericStockAdapter?.onEmptyViewClickListener = listener
     }
-
-    /**
-     * 设置 FooterView 子 view 点击事件监听
-     * @param listener 子 view项点击事件监听回调
-     */
-    fun setOnFooterViewChildClickListener(listener: ((View) -> Unit)? = null) {
-        genericStockAdapter?.onFooterViewChildClickListener = listener
+    fun setOnEmptyViewChildClickListener(listener: ((View) -> Unit)?) {
+        genericStockAdapter?.onEmptyViewChildClickListener = listener
     }
-
-    /**
-     * 设置 FooterView 点击事件监听
-     * @param listener Item 点击事件监听回调
-     */
-    fun setOnFooterViewClickListener(listener: ((View) -> Unit)? = null) {
+    fun setOnFooterViewClickListener(listener: ((View) -> Unit)?) {
         genericStockAdapter?.onFooterViewClickListener = listener
     }
-
-    /**
-     * 手动同步表头滚动偏移量
-     */
-    fun syncHeaderOffset(header: FrozenColumnHeader?) {
-        header?.let {
-            frozenColumnLayoutManager?.syncColumns(header)
-        }
+    fun setOnFooterViewChildClickListener(listener: ((View) -> Unit)?) {
+        genericStockAdapter?.onFooterViewChildClickListener = listener
     }
-
-    /**
-     * 更新水平滚动偏移量
-     * @param newOffset 新的滚动偏移量
-     */
-    fun updateHorizontalOffset(newOffset: Int) {
-        frozenColumnLayoutManager?.updateHorizontalOffset(newOffset)
+    fun setOnSideClickListener(listener: ((View, Int, FrozenColumnSide) -> Unit)?) {
+        genericStockAdapter?.onSideClickListener = listener
     }
-
-    /**
-     * 添加水平滚动监听
-     */
-    fun addHorizontalScrollListener(listener: (Int) -> Unit) {
-        frozenColumnLayoutManager?.addHorizontalScrollListener(listener)
+    fun setOnSideDoubleClickListener(listener: ((View, Int, FrozenColumnSide) -> Unit)?) {
+        genericStockAdapter?.onSideDoubleClickListener = listener
     }
+    fun toggleSideSelected(position: Int, side: FrozenColumnSide): Boolean =
+        genericStockAdapter?.toggleSideSelected(position, side) ?: false
+    fun setSideSelected(position: Int, side: FrozenColumnSide, selected: Boolean) =
+        genericStockAdapter?.setSideSelected(position, side, selected) ?: Unit
+    fun clearSideSelection(side: FrozenColumnSide? = null) =
+        genericStockAdapter?.clearSideSelection(side) ?: Unit
 
-    /**
-     * 移除水平滚动监听
-     */
-    fun removeHorizontalScrollListener(listener: (Int) -> Unit) {
-        frozenColumnLayoutManager?.removeHorizontalScrollListener(listener)
-    }
-
-    /**
-     * 设置越界回弹动画提供器
-     * @param animatorProvider 越界回弹动画提供器
-     */
-    fun setSpringBackAnimatorProvider(
-        animatorProvider: SpringBackAnimatorProvider?
-    ) {
-        frozenColumnLayoutManager?.springBackAnimatorProvider = animatorProvider
-    }
-
-    /**
-     * 获取布局管理器
-     */
-    fun getFrozenColumnLayoutManager(): FrozenColumnLayoutManager? {
-        return frozenColumnLayoutManager ?: (layoutManager as? FrozenColumnLayoutManager)
-    }
-
-    /**
-     * 获取适配器
-     */
-    fun getFrozenColumnAdapter(): GenericStockAdapter<out FrozenColumnData>? {
-        return genericStockAdapter ?: (adapter as? GenericStockAdapter<out FrozenColumnData>)
-    }
-
-    /**
-     * 获取当前绑定的数据列表
-     * @return 当前绑定的数据列表
-     */
-    @Suppress("UNCHECKED_CAST")
-    fun <T: FrozenColumnData> getData(): List<T>? {
-        return (adapter as? ListAdapter<T, *>)?.currentList
-    }
-
-    /**
-     * 获取指定位置的 Item 数据
-     * @param position Item 位置
-     * @return Item 数据
-     */
-    @Suppress("UNCHECKED_CAST")
-    fun <T: FrozenColumnData> getItem(position: Int): T? {
-        return getData<T>()?.getOrNull(position)
-    }
-
-    /**
-     * 是否启用 ViewPager2 嵌套冲突解决方案， 默认 false
-     */
     fun setupViewPager2TouchConflictResolution(value: Boolean) {
         if (value) {
-            getFrozenColumnLayoutManager()?.let {
+            leadingLayoutManager?.let {
                 prevMaxOverScrollDistance = it.maxOverScrollDistance
                 it.maxOverScrollDistance = 0
             }
         } else {
-            getFrozenColumnLayoutManager()?.maxOverScrollDistance = prevMaxOverScrollDistance
+            leadingLayoutManager?.maxOverScrollDistance = prevMaxOverScrollDistance
         }
         setupViewPager2TouchConflictResolution = value
     }
 
-    /**
-     * 初始化 View
-     */
-    private fun initView() {
-        layoutManager = FrozenColumnLayoutManager(context).also { frozenColumnLayoutManager = it }
-        // setHasFixedSize(true)
-        overScrollMode = OVER_SCROLL_NEVER
-    }
-
-    /**
-     * 初始化属性
-     * @param context 上下文
-     * @param attrs 属性集
-     */
-    private fun initAttrs(context: Context, attrs: AttributeSet?) {
-        context.withStyledAttributes(attrs, R.styleable.FrozenColumnList) {
-            itemWidth = getDimensionPixelSize(
-                R.styleable.FrozenColumnList_fclItemWidth,
-                context.dp2px(FrozenColumConfig.DEFAULT_COLUMN_WITH_DP)
-            )
-            itemFrozenWidth = getDimensionPixelSize(
-                R.styleable.FrozenColumnList_fclItemFrozenWidth,
-                context.dp2px(FrozenColumConfig.DEFAULT_FROZEN_COLUMN_WITH_DP)
-            )
-            overScrollDamping = getFloat(
-                R.styleable.FrozenColumnList_fclOverScrollDamping,
-                FrozenColumConfig.DEFAULT_OVER_SCROLL_DAMPING
-            )
-            overScrollAnimatorThreshold = getDimensionPixelSize(
-                R.styleable.FrozenColumnList_fclOverScrollAnimatorThreshold,
-                context.dp2px(FrozenColumConfig.DEFAULT_OVER_SCROLL_ANIMATOR_THRESHOLD_DP)
-            )
-            maxOverScrollDistance = getDimensionPixelSize(
-                R.styleable.FrozenColumnList_fclMaxOverScrollDistance,
-                context.dp2px(FrozenColumConfig.DEFAULT_COLUMN_WITH_DP)
-            )
-        }
-    }
-
-    init {
-        // 初始化 View
-        initView()
-        // 初始化属性
-        initAttrs(context, attrs)
-    }
-
-    override fun onDetachedFromWindow() {
-        frozenColumnLayoutManager?.removeAllHorizontalScrollListener()
-        super.onDetachedFromWindow()
-    }
-
-    /**
-     * 处理 ViewPager2 嵌套冲突
-     */
-    override fun dispatchTouchEvent(e: MotionEvent): Boolean {
-        if (!setupViewPager2TouchConflictResolution){
-            return super.dispatchTouchEvent(e)
-        }
-        when (e.action) {
-            MotionEvent.ACTION_DOWN -> {
-                startX = e.x
-                startY = e.y
-                // 告知父容器：先不要拦截，我可能需要滑动
-                parent.requestDisallowInterceptTouchEvent(true)
-            }
-            MotionEvent.ACTION_MOVE -> {
-                val dx = e.x - startX
-                val dy = e.y - startY
-                if (abs(dx) > abs(dy) && abs(dx) > touchSlop) {
-                    // 横向滑动逻辑
-                    if (!canScrollHorizontally(if (dx > 0) -1 else 1)) {
-                        // 已经无法再滑动了
-                        parent.requestDisallowInterceptTouchEvent(false)
-                    } else {
-                        // 还能滑动，继续霸占事件
-                        parent.requestDisallowInterceptTouchEvent(true)
-                    }
-                } else if (abs(dy) > touchSlop) {
-                    // 纵向滑动逻辑
-                    if (!canScrollVertically(if (dy > 0) -1 else 1)) {
-                        // 已经无法再滑动了
-                        parent.requestDisallowInterceptTouchEvent(false)
-                    } else {
-                        // 还能滑动，继续霸占事件
-                        parent.requestDisallowInterceptTouchEvent(true)
+    override fun dispatchTouchEvent(event: MotionEvent): Boolean {
+        val middle = middleLayoutManager
+        if (middle != null) {
+            when (event.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
+                    startX = event.x
+                    startY = event.y
+                    middle.beginGesture(middleSideAt(event.x))
+                    parent?.requestDisallowInterceptTouchEvent(true)
+                }
+                MotionEvent.ACTION_MOVE -> {
+                    middle.updateGestureDirection(
+                        event.x - startX,
+                        event.y - startY,
+                        horizontalScrollThreshold
+                    )
+                    when {
+                        middle.isHorizontalGesture() -> parent?.requestDisallowInterceptTouchEvent(true)
+                        middle.isVerticalGesture() -> parent?.requestDisallowInterceptTouchEvent(false)
                     }
                 }
             }
-            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                parent.requestDisallowInterceptTouchEvent(false)
+            val handled = super.dispatchTouchEvent(event)
+            if (event.actionMasked == MotionEvent.ACTION_UP || event.actionMasked == MotionEvent.ACTION_CANCEL) {
+                parent?.requestDisallowInterceptTouchEvent(false)
+                if (scrollState != SCROLL_STATE_SETTLING) middle.endGestureWithoutFling()
             }
+            return handled
         }
-        return super.dispatchTouchEvent(e)
+
+        if (!setupViewPager2TouchConflictResolution) return super.dispatchTouchEvent(event)
+        when (event.actionMasked) {
+            MotionEvent.ACTION_DOWN -> {
+                startX = event.x
+                startY = event.y
+                parent?.requestDisallowInterceptTouchEvent(true)
+            }
+            MotionEvent.ACTION_MOVE -> {
+                val dx = event.x - startX
+                val dy = event.y - startY
+                if (abs(dx) > abs(dy) && abs(dx) > touchSlop) {
+                    parent?.requestDisallowInterceptTouchEvent(canScrollHorizontally(if (dx > 0) -1 else 1))
+                } else if (abs(dy) > touchSlop) {
+                    parent?.requestDisallowInterceptTouchEvent(canScrollVertically(if (dy > 0) -1 else 1))
+                }
+            }
+            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> parent?.requestDisallowInterceptTouchEvent(false)
+        }
+        return super.dispatchTouchEvent(event)
     }
 
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        // add... 内部会去重。临时离开 Window 不应丢失 header 和业务侧监听。
+        attachedHeader?.let(::attachHeader)
+        post {
+            middleLayoutManager?.restoreVisibleRows()
+            syncHeaderOffset(attachedHeader)
+        }
+    }
+
+    private fun middleSideAt(x: Float): FrozenColumnSide? {
+        val row = (0 until childCount).asSequence()
+            .mapNotNull { getChildAt(it) as? MiddleFrozenRowLayout }
+            .firstOrNull() ?: return null
+        return when {
+            x < row.frozenStart -> FrozenColumnSide.LEFT
+            x >= row.frozenEnd -> FrozenColumnSide.RIGHT
+            else -> null
+        }
+    }
 }

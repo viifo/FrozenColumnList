@@ -30,5 +30,7 @@
         <attr name="fclOverScrollAnimatorThreshold" format="dimension" />
         <!-- 最大越界回弹距离，默认值为 80dp -->
         <attr name="fclMaxOverScrollDistance" format="dimension" />
+        <!-- 水平手势触发阈值，默认使用系统 touchSlop -->
+        <attr name="fclHorizontalScrollThreshold" format="dimension" />
     </declare-styleable>
 </resources>

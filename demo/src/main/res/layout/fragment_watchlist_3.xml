@@ -7,4 +7,76 @@
     android:layout_height="match_parent"
     android:orientation="vertical">
 
+    <androidx.appcompat.widget.LinearLayoutCompat
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="12dp"
+        android:paddingTop="30dp"
+        android:paddingEnd="12dp"
+        android:paddingBottom="8dp">
+
+        <androidx.appcompat.widget.AppCompatTextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="中间列固定"
+            android:textColor="@color/black"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            tools:ignore="HardcodedText" />
+
+        <androidx.appcompat.widget.AppCompatButton
+            android:id="@+id/btn_scroll_mode"
+            android:layout_width="wrap_content"
+            android:layout_height="36dp"
+            android:text="独立滚动"
+            android:textSize="12sp"
+            tools:ignore="HardcodedText" />
+
+    </androidx.appcompat.widget.LinearLayoutCompat>
+
+    <androidx.appcompat.widget.AppCompatTextView
+        android:id="@+id/tv_hint"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingStart="12dp"
+        android:paddingEnd="12dp"
+        android:paddingBottom="8dp"
+        android:text="左侧 ID 12 起、右侧 ID 17 止使用深浅灰交替背景；双击可分别选中"
+        android:textColor="@color/gray"
+        android:textSize="12sp"
+        tools:ignore="HardcodedText" />
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1px"
+        android:background="@color/divider" />
+
+    <com.viifo.frozencolumnlist.FrozenColumnHeader
+        android:id="@+id/middle_frozen_header"
+        android:layout_width="match_parent"
+        android:layout_height="40dp"
+        android:background="@color/white" />
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1px"
+        android:background="@color/divider" />
+
+    <com.scwang.smart.refresh.layout.SmartRefreshLayout
+        android:id="@+id/refresh_layout"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <com.viifo.frozencolumnlist.FrozenColumnList
+            android:id="@+id/middle_frozen_list"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            app:fclHorizontalScrollThreshold="24dp" />
+
+    </com.scwang.smart.refresh.layout.SmartRefreshLayout>
+
 </androidx.appcompat.widget.LinearLayoutCompat>

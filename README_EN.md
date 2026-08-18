@@ -45,7 +45,7 @@ Download [APK-Demo](https://github.com/viifo/FrozenColumnList/releases)
 
    ```groovy
    dependencies {
-       implementation("com.github.viifo:FrozenColumnList:1.0.0")
+       implementation("com.github.viifo:FrozenColumnList:2.0.0")
    }
    ```
 
@@ -304,4 +304,3 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 ```
-

@@ -1,19 +1,25 @@
 package com.viifo.frozencolumnlist.layout
 
 import android.content.Context
+import android.os.SystemClock
 import android.view.View
 import android.view.ViewGroup
 import android.view.ViewParent
+import android.view.ViewConfiguration
 import android.widget.FrameLayout
 import android.widget.TextView
 import androidx.annotation.IdRes
-import androidx.appcompat.widget.LinearLayoutCompat
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
+import com.viifo.frozencolumnlist.FrozenColumnConfig
+import com.viifo.frozencolumnlist.FrozenColumnPosition
+import com.viifo.frozencolumnlist.FrozenColumnSide
+import com.viifo.frozencolumnlist.R
 import com.viifo.frozencolumnlist.layout.GenericStockAdapter.BaseViewHolder
 import com.viifo.frozencolumnlist.data.FrozenColumnData
 import com.viifo.frozencolumnlist.provider.ColumnProvider
+import com.viifo.frozencolumnlist.provider.FrozenColumnViewHolder
 import java.util.LinkedHashSet
 
 /**
@@ -29,6 +35,10 @@ open class GenericStockAdapter<T: FrozenColumnData>(
     var onItemClickListener: ((View, position: Int, itemViewType: Int) -> Unit)? = null
     /** Item 子 View 点击事件监听回调 */
     var onItemChildClickListener: ((View, position: Int, itemViewType: Int) -> Unit)? = null
+    /** 中间固定模式的左右区域点击回调 */
+    var onSideClickListener: ((View, position: Int, FrozenColumnSide) -> Unit)? = null
+    /** 中间固定模式的左右区域双击回调；设置后单击回调会延迟到双击判定结束。 */
+    var onSideDoubleClickListener: ((View, position: Int, FrozenColumnSide) -> Unit)? = null
 
     /** EmptyView 点击事件监听回调 */
     var onEmptyViewClickListener: ((View) -> Unit)? = null
@@ -40,11 +50,10 @@ open class GenericStockAdapter<T: FrozenColumnData>(
     /** FooterView 子 View 点击事件监听回调 */
     var onFooterViewChildClickListener: ((View) -> Unit)? = null
 
-    /** 默认 Item 视图宽度 */
-    var defaultItemWidth: Int = LinearLayoutCompat.LayoutParams.WRAP_CONTENT
+    var columnConfig: FrozenColumnConfig = FrozenColumnConfig()
 
-    /** 默认 Item 冻结(固定)视图宽度*/
-    var defaultItemFrozenWidth: Int = LinearLayoutCompat.LayoutParams.WRAP_CONTENT
+    private val selectedLeftIds = mutableSetOf<String>()
+    private val selectedRightIds = mutableSetOf<String>()
 
     /** 子项点击事件监听的 View ID 集合 */
     private val childClickViewIds = LinkedHashSet<Int>()
@@ -68,7 +77,7 @@ open class GenericStockAdapter<T: FrozenColumnData>(
     }
 
     open fun getContentItemViewType(position: Int): Int {
-        return super.getItemViewType(position)
+        return provider.getItemViewType(getItem(position))
     }
 
     override fun getItemViewType(position: Int): Int {
@@ -89,6 +98,7 @@ open class GenericStockAdapter<T: FrozenColumnData>(
                     emptyLayoutVp.removeView(emptyLayout)
                 }
                 BaseViewHolder<T>(emptyLayout ?: FrameLayout(parent.context)).also {
+                    it.itemView.setTag(R.id.tag_frozencolumnlist_content_row, false)
                     bindViewClickListener(it, viewType)
                 }
             }
@@ -98,37 +108,46 @@ open class GenericStockAdapter<T: FrozenColumnData>(
                     footerLayoutVp.removeView(footerLayout)
                 }
                 BaseViewHolder<T>(footerLayout ?: FrameLayout(parent.context)).also {
+                    it.itemView.setTag(R.id.tag_frozencolumnlist_content_row, false)
                     bindViewClickListener(it, viewType)
                 }
             }
             else -> {
-                // 固定列数量
-                val frozenColumnCount = provider.getFrozenColumnCount()
-                // 可滚动列数量
-                val scrollableColumnCount = getItem(0).columnCount - frozenColumnCount
-                // 外部行容器，使用 LinearLayoutCompat 水平排列
-                val rowContainer = provider.createItemRowContainer(parent, viewType)
-                // 调用 Provider 预生成 View
-                val frozenViews = provider.createItemRowFrozenViews(rowContainer, viewType, frozenColumnCount)
-                val scrollViews = provider.createItemRowScrollableViews(rowContainer, viewType, scrollableColumnCount)
-                val viewWidths = provider.getColumnWidths(rowContainer, frozenViews.size + scrollViews.size)
-                // 将 View 添加到外部行容器
-                frozenViews.forEachIndexed { index, view ->
-                    rowContainer.addView(
-                        view,
-                        viewWidths.getOrNull(index) ?: defaultItemFrozenWidth,
-                        ViewGroup.LayoutParams.MATCH_PARENT
+                val columnCount = currentList.firstOrNull {
+                    provider.getItemViewType(it) == viewType
+                }?.columnCount ?: error("No data found for item viewType=$viewType")
+                val rowContainer = provider.createItemRowView(parent, viewType, columnCount)
+                require(rowContainer.childCount == columnCount) {
+                    "createItemRowView must contain $columnCount direct column children, " +
+                        "but was ${rowContainer.childCount}"
+                }
+                val frozenColumnStart = columnConfig.resolveFrozenStart(columnCount)
+                rowContainer.setTag(R.id.tag_frozencolumnlist_content_row, true)
+                rowContainer.layoutParams = RecyclerView.LayoutParams(
+                    RecyclerView.LayoutParams.MATCH_PARENT,
+                    rowContainer.layoutParams?.height ?: RecyclerView.LayoutParams.WRAP_CONTENT
+                )
+                if (columnConfig.frozenColumnPosition == FrozenColumnPosition.MIDDLE) {
+                    require(rowContainer is MiddleFrozenRowLayout) {
+                        "MIDDLE mode row root must be MiddleFrozenRowLayout"
+                    }
+                    rowContainer.frozenColumnIndex = frozenColumnStart
+                    rowContainer.frozenColumnCount = columnConfig.frozenColumnCount
+                    rowContainer.frozenColumnStart = columnConfig.frozenViewportStart
+                    rowContainer.visibleColumnCount = columnConfig.visibleColumnCount
+                } else {
+                    VisibleColumnWidthFitter.configure(
+                        row = rowContainer,
+                        frozenColumnStart = frozenColumnStart,
+                        frozenColumnCount = columnConfig.frozenColumnCount,
+                        visibleColumnCount = columnConfig.visibleColumnCount
                     )
                 }
-                scrollViews.forEachIndexed { index, view ->
-                    rowContainer.addView(
-                        view,
-                        viewWidths.getOrNull(frozenViews.size + index) ?: defaultItemWidth,
-                        ViewGroup.LayoutParams.MATCH_PARENT
-                    )
+                val delegate = provider.createItemViewHolder(rowContainer, viewType)
+                require(delegate.rowView === rowContainer) {
+                    "FrozenColumnViewHolder.rowView must be the View returned by createItemRowView"
                 }
-                // 返回 ViewHolder
-                GenericViewHolder(itemView = rowContainer, provider = provider).also {
+                GenericViewHolder(itemView = rowContainer, delegate = delegate).also {
                     bindViewClickListener(it, viewType)
                 }
             }
@@ -137,7 +156,8 @@ open class GenericStockAdapter<T: FrozenColumnData>(
 
     override fun onBindViewHolder(holder: BaseViewHolder<T>, position: Int) {
         if (holder is GenericViewHolder<T>) {
-            holder.bind(getItem(position))
+            holder.bind(getItem(position), emptyList())
+            bindSideBackgrounds(holder, position)
         }
     }
 
@@ -152,13 +172,40 @@ open class GenericStockAdapter<T: FrozenColumnData>(
         } else {
             // payloads 不为空，执行局部刷新
             if (holder is GenericViewHolder<T>) {
-                holder.diffBind(getItem(position), payloads)
+                if (payloads.any { it != PAYLOAD_SIDE_BACKGROUND }) {
+                    holder.bind(getItem(position), payloads)
+                }
+                bindSideBackgrounds(holder, position)
             }
         }
     }
 
     fun getChildClickViewIds(): LinkedHashSet<Int> {
         return childClickViewIds
+    }
+
+    fun setSideSelected(position: Int, side: FrozenColumnSide, selected: Boolean) {
+        val id = currentList.getOrNull(position)?.id ?: return
+        val set = if (side == FrozenColumnSide.LEFT) selectedLeftIds else selectedRightIds
+        val changed = if (selected) set.add(id) else set.remove(id)
+        if (changed) notifyItemChanged(position, PAYLOAD_SIDE_BACKGROUND)
+    }
+
+    fun toggleSideSelected(position: Int, side: FrozenColumnSide): Boolean {
+        val selected = !isSideSelected(position, side)
+        setSideSelected(position, side, selected)
+        return selected
+    }
+
+    fun isSideSelected(position: Int, side: FrozenColumnSide): Boolean {
+        val id = currentList.getOrNull(position)?.id ?: return false
+        return (if (side == FrozenColumnSide.LEFT) selectedLeftIds else selectedRightIds).contains(id)
+    }
+
+    fun clearSideSelection(side: FrozenColumnSide? = null) {
+        if (side == null || side == FrozenColumnSide.LEFT) selectedLeftIds.clear()
+        if (side == null || side == FrozenColumnSide.RIGHT) selectedRightIds.clear()
+        notifyItemRangeChanged(0, itemCount, PAYLOAD_SIDE_BACKGROUND)
     }
 
     /**
@@ -177,10 +224,19 @@ open class GenericStockAdapter<T: FrozenColumnData>(
         viewHolder: BaseViewHolder<T>,
         viewType: Int
     ) {
+        val isContentView = viewType != EMPTY_VIEW && viewType != FOOTER_VIEW
+        val doubleTapSlop = ViewConfiguration.get(viewHolder.itemView.context).scaledDoubleTapSlop
+        val doubleTapSlopSquared = doubleTapSlop * doubleTapSlop
         // 绑定 item 点击事件
-        if (onItemClickListener != null
+        if (isContentView
             || (onEmptyViewClickListener != null && viewType == EMPTY_VIEW)
             || (onFooterViewClickListener != null && viewType == FOOTER_VIEW)) {
+            var lastSideClickTime = 0L
+            var lastSideClickItemId: String? = null
+            var lastSideClick: FrozenColumnSide? = null
+            var lastSideClickX = 0f
+            var lastSideClickY = 0f
+            var pendingSingleSideClick: Runnable? = null
             viewHolder.itemView.setOnClickListener { v ->
                 val position = viewHolder.bindingAdapterPosition
                 if (position == RecyclerView.NO_POSITION) {
@@ -189,7 +245,60 @@ open class GenericStockAdapter<T: FrozenColumnData>(
                 when (viewType) {
                     EMPTY_VIEW -> onEmptyViewClickListener?.invoke(v)
                     FOOTER_VIEW -> onFooterViewClickListener?.invoke(v)
-                    else -> onItemClickListener?.invoke(v, position, viewType)
+                    else -> {
+                        onItemClickListener?.invoke(v, position, viewType)
+                        val row = v as? MiddleFrozenRowLayout
+                        row?.sideAt(row.lastTouchX)?.let { side ->
+                            val itemId = currentList.getOrNull(position)?.id ?: return@let
+                            val doubleClickListener = onSideDoubleClickListener
+                            if (doubleClickListener == null) {
+                                pendingSingleSideClick?.let(v::removeCallbacks)
+                                pendingSingleSideClick = null
+                                lastSideClickTime = 0L
+                                lastSideClickItemId = null
+                                lastSideClick = null
+                                onSideClickListener?.invoke(v, position, side)
+                                return@let
+                            }
+
+                            val now = SystemClock.uptimeMillis()
+                            val deltaX = row.lastTouchX - lastSideClickX
+                            val deltaY = row.lastTouchY - lastSideClickY
+                            val isDoubleClick = itemId == lastSideClickItemId &&
+                                side == lastSideClick &&
+                                now - lastSideClickTime in 0..DOUBLE_TAP_TIMEOUT_MS &&
+                                deltaX * deltaX + deltaY * deltaY <= doubleTapSlopSquared.toFloat()
+                            if (isDoubleClick) {
+                                pendingSingleSideClick?.let(v::removeCallbacks)
+                                pendingSingleSideClick = null
+                                lastSideClickTime = 0L
+                                lastSideClickItemId = null
+                                lastSideClick = null
+                                doubleClickListener.invoke(v, position, side)
+                            } else {
+                                lastSideClickTime = now
+                                lastSideClickItemId = itemId
+                                lastSideClick = side
+                                lastSideClickX = row.lastTouchX
+                                lastSideClickY = row.lastTouchY
+                                if (onSideClickListener != null) {
+                                    lateinit var singleClick: Runnable
+                                    singleClick = Runnable {
+                                        if (pendingSingleSideClick === singleClick) {
+                                            pendingSingleSideClick = null
+                                        }
+                                        val currentPosition = viewHolder.bindingAdapterPosition
+                                        if (currentPosition != RecyclerView.NO_POSITION &&
+                                            currentList.getOrNull(currentPosition)?.id == itemId) {
+                                            onSideClickListener?.invoke(v, currentPosition, side)
+                                        }
+                                    }
+                                    pendingSingleSideClick = singleClick
+                                    v.postDelayed(singleClick, DOUBLE_TAP_TIMEOUT_MS)
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -283,20 +392,29 @@ open class GenericStockAdapter<T: FrozenColumnData>(
         return (footerLayout?.childCount ?: 0) > 0
     }
 
+    private fun bindSideBackgrounds(holder: GenericViewHolder<T>, position: Int) {
+        val row = holder.itemView as? MiddleFrozenRowLayout ?: return
+        val data = getItem(position)
+        row.leftBackgroundColor = provider.getSideBackgroundColor(
+            row.context,
+            data,
+            FrozenColumnSide.LEFT,
+            isSideSelected(position, FrozenColumnSide.LEFT)
+        )
+        row.rightBackgroundColor = provider.getSideBackgroundColor(
+            row.context,
+            data,
+            FrozenColumnSide.RIGHT,
+            isSideSelected(position, FrozenColumnSide.RIGHT)
+        )
+    }
+
     class GenericViewHolder<T: FrozenColumnData>(
         itemView: View,
-        private val provider: ColumnProvider<T>
+        private val delegate: FrozenColumnViewHolder<T>
     ) : BaseViewHolder<T>(itemView) {
 
-        fun bind(data: T) {
-            provider.bindItemRowFrozenViews(this, data, emptyList())
-            provider.bindItemRowScrollableViews(this, data, emptyList())
-        }
-
-        fun diffBind(data: T, payloads: List<Any?>) {
-            provider.bindItemRowFrozenViews(this, data, payloads)
-            provider.bindItemRowScrollableViews(this, data, payloads)
-        }
+        fun bind(data: T, payloads: List<Any?>) = delegate.bind(data, payloads)
 
         fun <V: View> getView(@IdRes id: Int): V = itemView.findViewById(id)
 
@@ -312,6 +430,8 @@ open class GenericStockAdapter<T: FrozenColumnData>(
         const val EMPTY_VIEW = 0x1000001
         const val HEADER_VIEW = 0x1000002 // 保留
         const val FOOTER_VIEW = 0x1000003
+        private const val PAYLOAD_SIDE_BACKGROUND = "frozen_column_side_background"
+        private val DOUBLE_TAP_TIMEOUT_MS = ViewConfiguration.getDoubleTapTimeout().toLong()
 
         /** 默认 DiffCallback 实现 */
         fun <T : FrozenColumnData> genericDiffCallback() = object : DiffUtil.ItemCallback<T>() {

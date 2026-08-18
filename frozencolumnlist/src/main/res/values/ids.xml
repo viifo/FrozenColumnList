@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <item name="tag_frozencolumnlist_last_offset" type="id"/>
+    <item name="tag_frozencolumnlist_width_fitter" type="id"/>
+    <item name="tag_frozencolumnlist_content_row" type="id"/>
 </resources>

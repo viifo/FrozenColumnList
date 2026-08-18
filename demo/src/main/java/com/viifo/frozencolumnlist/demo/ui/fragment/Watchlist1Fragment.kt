@@ -13,6 +13,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.RecyclerView
 import com.scwang.smart.refresh.footer.ClassicsFooter
 import com.scwang.smart.refresh.header.ClassicsHeader
+import com.viifo.frozencolumnlist.FrozenColumnConfig
 import com.viifo.frozencolumnlist.data.FrozenHeaderData
 import com.viifo.frozencolumnlist.data.SortDirection
 import com.viifo.frozencolumnlist.decoration.BoundDividerDecoration
@@ -89,6 +90,9 @@ class Watchlist1Fragment: Fragment() {
         // 初始化 FrozenColumnList
         // mBinding?.frozenColumnList?.setupViewPager2TouchConflictResolution(true)
         val provider = StockColumnProvider()
+        mBinding?.frozenColumnList?.setColumnConfig(
+            FrozenColumnConfig(frozenColumnCount = 1, visibleColumnCount = 4)
+        )
         mBinding?.frozenColumnList?.setProvider(provider)
         mBinding?.frozenColumnList?.attachHeader(mBinding?.frozenColumnHeader)
         mBinding?.frozenColumnList?.setItemAnimator(StockItemAnimator(requireContext()))

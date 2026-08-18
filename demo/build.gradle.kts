@@ -68,8 +68,7 @@ dependencies {
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
 
-    // implementation(project(":frozencolumnlist"))
-    implementation("com.github.viifo:FrozenColumnList:1.0.0")
+    implementation(project(":frozencolumnlist"))
 
     // 刷新库
     implementation("io.github.scwang90:refresh-layout-kernel:3.0.0-alpha")

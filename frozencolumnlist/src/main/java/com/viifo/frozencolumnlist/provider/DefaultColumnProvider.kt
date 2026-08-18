@@ -1,102 +1,45 @@
 package com.viifo.frozencolumnlist.provider
 
-import android.graphics.Color
-import android.util.TypedValue
-import android.view.Gravity
-import android.view.View
 import android.view.ViewGroup
-import androidx.appcompat.widget.AppCompatTextView
-import androidx.appcompat.widget.LinearLayoutCompat
-import androidx.recyclerview.widget.RecyclerView
-import com.viifo.frozencolumnlist.R
 import com.viifo.frozencolumnlist.data.FrozenColumnData
 import com.viifo.frozencolumnlist.data.FrozenHeaderData
-import com.viifo.frozencolumnlist.data.SortDirection
-import com.viifo.frozencolumnlist.ext.dp2px
 
-/**
- * 默认列数据提供者
- */
-abstract class  DefaultColumnProvider<T : FrozenColumnData> : ColumnProvider<T> {
+/** 提供整行默认 ViewHolder，调用方只需实现 create...RowView 和 bind...Row。 */
+abstract class DefaultColumnProvider<T : FrozenColumnData> : ColumnProvider<T> {
 
-    override fun getFrozenColumnCount(): Int = 1
-
-    override fun getColumnWidths(parent: ViewGroup, size: Int): List<Int> = emptyList()
-
-    override fun createFrozenHeader(
-        parent: ViewGroup,
-        size: Int,
-        onClick: ((View, Int) -> Unit)?
-    ): List<View> {
-        return (0 until size).map { index ->
-            AppCompatTextView(parent.context).also {
-                it.setTextColor(Color.GRAY)
-                it.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
-                it.gravity = Gravity.START or Gravity.CENTER_VERTICAL
-                it.setPadding(
-                    parent.context.dp2px(12),
-                    0,
-                    parent.context.dp2px(8),
-                    0
-                )
-                it.compoundDrawablePadding = parent.context.dp2px(2)
-                it.setOnClickListener { view -> onClick?.invoke(view, index) }
+    final override fun createHeaderViewHolder(rowView: ViewGroup): FrozenHeaderViewHolder {
+        return object : FrozenHeaderViewHolder {
+            override val rowView: ViewGroup = rowView
+            override fun bind(data: List<FrozenHeaderData>) = bindHeaderRow(this, data)
+            override fun bindColumn(position: Int, data: FrozenHeaderData) {
+                bindHeaderColumn(this, position, data)
             }
         }
     }
 
-    override fun createScrollableHeader(
-        parent: ViewGroup,
-        size: Int,
-        onClick: ((View, Int) -> Unit)?
-    ): List<View> {
-        return (0 until size).map { index ->
-            AppCompatTextView(parent.context).also {
-                it.setTextColor(Color.GRAY)
-                it.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
-                it.gravity = Gravity.END or Gravity.CENTER_VERTICAL
-                it.setPadding(
-                    parent.context.dp2px(12),
-                    0,
-                    parent.context.dp2px(if (index == size - 1) 12 else 8),
-                    0
-                )
-                it.compoundDrawablePadding = parent.context.dp2px(2)
-                it.setOnClickListener { view -> onClick?.invoke(view, index) }
-            }
+    final override fun createItemViewHolder(
+        rowView: ViewGroup,
+        viewType: Int
+    ): FrozenColumnViewHolder<T> {
+        return object : FrozenColumnViewHolder<T> {
+            override val rowView: ViewGroup = rowView
+            override fun bind(data: T, payloads: List<Any?>) = bindItemRow(this, data, payloads)
         }
     }
 
-    override fun bindFrozenHeaderView(view: View, data: FrozenHeaderData?) {
-        (view as? AppCompatTextView)?.text = data?.name
+    abstract fun bindHeaderRow(holder: FrozenHeaderViewHolder, data: List<FrozenHeaderData>)
+
+    open fun bindHeaderColumn(
+        holder: FrozenHeaderViewHolder,
+        position: Int,
+        data: FrozenHeaderData
+    ) {
+        holder.getColumnView<android.widget.TextView>(position).text = data.name
     }
 
-    override fun bindScrollableHeaderView(view: View, data: FrozenHeaderData?) {
-        (view as? AppCompatTextView)?.let { textView ->
-            textView.text = data?.name
-            textView.setCompoundDrawablesWithIntrinsicBounds(
-                0,
-                0,
-                when (data?.sort) {
-                    SortDirection.None -> R.drawable.frozen_column_list_ic_sort_none
-                    SortDirection.Asc -> R.drawable.frozen_column_list_ic_sort_asc
-                    SortDirection.Desc -> R.drawable.frozen_column_list_ic_sort_desc
-                    else -> 0
-                },
-                0
-            )
-        }
-    }
-
-    override fun createItemRowContainer(parent: ViewGroup, viewType: Int): ViewGroup {
-        return LinearLayoutCompat(parent.context).apply {
-            layoutParams = RecyclerView.LayoutParams(
-                RecyclerView.LayoutParams.MATCH_PARENT,
-                RecyclerView.LayoutParams.WRAP_CONTENT
-            )
-            orientation = LinearLayoutCompat.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-        }
-    }
-
+    abstract fun bindItemRow(
+        holder: FrozenColumnViewHolder<T>,
+        data: T,
+        payloads: List<Any?>
+    )
 }
