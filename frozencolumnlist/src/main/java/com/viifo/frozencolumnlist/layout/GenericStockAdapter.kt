@@ -121,28 +121,16 @@ open class GenericStockAdapter<T: FrozenColumnData>(
                     "createItemRowView must contain $columnCount direct column children, " +
                         "but was ${rowContainer.childCount}"
                 }
-                val frozenColumnStart = columnConfig.resolveFrozenStart(columnCount)
                 rowContainer.setTag(R.id.tag_frozencolumnlist_content_row, true)
                 rowContainer.layoutParams = RecyclerView.LayoutParams(
                     RecyclerView.LayoutParams.MATCH_PARENT,
                     rowContainer.layoutParams?.height ?: RecyclerView.LayoutParams.WRAP_CONTENT
                 )
-                if (columnConfig.frozenColumnPosition == FrozenColumnPosition.MIDDLE) {
-                    require(rowContainer is MiddleFrozenRowLayout) {
-                        "MIDDLE mode row root must be MiddleFrozenRowLayout"
-                    }
-                    rowContainer.frozenColumnIndex = frozenColumnStart
-                    rowContainer.frozenColumnCount = columnConfig.frozenColumnCount
-                    rowContainer.frozenColumnStart = columnConfig.frozenViewportStart
-                    rowContainer.visibleColumnCount = columnConfig.visibleColumnCount
-                } else {
-                    VisibleColumnWidthFitter.configure(
-                        row = rowContainer,
-                        frozenColumnStart = frozenColumnStart,
-                        frozenColumnCount = columnConfig.frozenColumnCount,
-                        visibleColumnCount = columnConfig.visibleColumnCount
-                    )
-                }
+                configureContentRow(
+                    row = rowContainer,
+                    columnCount = columnCount,
+                    viewportWidth = parent.width - parent.paddingLeft - parent.paddingRight
+                )
                 val delegate = provider.createItemViewHolder(rowContainer, viewType)
                 require(delegate.rowView === rowContainer) {
                     "FrozenColumnViewHolder.rowView must be the View returned by createItemRowView"
@@ -156,7 +144,15 @@ open class GenericStockAdapter<T: FrozenColumnData>(
 
     override fun onBindViewHolder(holder: BaseViewHolder<T>, position: Int) {
         if (holder is GenericViewHolder<T>) {
-            holder.bind(getItem(position), emptyList())
+            val item = getItem(position)
+            configureContentRow(
+                row = holder.itemView as ViewGroup,
+                columnCount = item.columnCount,
+                viewportWidth = (holder.itemView.parent as? ViewGroup)?.let {
+                    it.width - it.paddingLeft - it.paddingRight
+                }
+            )
+            holder.bind(item, emptyList())
             bindSideBackgrounds(holder, position)
         }
     }
@@ -172,11 +168,44 @@ open class GenericStockAdapter<T: FrozenColumnData>(
         } else {
             // payloads 不为空，执行局部刷新
             if (holder is GenericViewHolder<T>) {
+                val item = getItem(position)
+                configureContentRow(
+                    row = holder.itemView as ViewGroup,
+                    columnCount = item.columnCount,
+                    viewportWidth = (holder.itemView.parent as? ViewGroup)?.let {
+                        it.width - it.paddingLeft - it.paddingRight
+                    }
+                )
                 if (payloads.any { it != PAYLOAD_SIDE_BACKGROUND }) {
-                    holder.bind(getItem(position), payloads)
+                    holder.bind(item, payloads)
                 }
                 bindSideBackgrounds(holder, position)
             }
+        }
+    }
+
+    private fun configureContentRow(
+        row: ViewGroup,
+        columnCount: Int,
+        viewportWidth: Int?
+    ) {
+        val frozenColumnStart = columnConfig.resolveFrozenStart(columnCount)
+        if (columnConfig.frozenColumnPosition == FrozenColumnPosition.MIDDLE) {
+            require(row is MiddleFrozenRowLayout) {
+                "MIDDLE mode row root must be MiddleFrozenRowLayout"
+            }
+            row.frozenColumnIndex = frozenColumnStart
+            row.frozenColumnCount = columnConfig.frozenColumnCount
+            row.frozenColumnStart = columnConfig.frozenViewportStart
+            row.visibleColumnCount = columnConfig.visibleColumnCount
+        } else {
+            VisibleColumnWidthFitter.configure(
+                row = row,
+                frozenColumnStart = frozenColumnStart,
+                frozenColumnCount = columnConfig.frozenColumnCount,
+                visibleColumnCount = columnConfig.visibleColumnCount,
+                viewportWidth = viewportWidth
+            )
         }
     }
 

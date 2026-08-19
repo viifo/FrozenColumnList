@@ -1,6 +1,6 @@
 package com.viifo.frozencolumnlist
 
-/** 固定列所在区域。末尾固定已预留，当前版本暂不实现。 */
+/** 固定列所在区域。 */
 enum class FrozenColumnPosition { START, MIDDLE, END }
 
 /** 中间固定模式下左右区域的滚动方式。 */

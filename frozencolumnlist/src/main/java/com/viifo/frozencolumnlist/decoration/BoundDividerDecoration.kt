@@ -7,6 +7,7 @@ import android.graphics.Rect
 import android.graphics.RectF
 import android.view.View
 import androidx.recyclerview.widget.RecyclerView
+import com.viifo.frozencolumnlist.FrozenColumnPosition
 import com.viifo.frozencolumnlist.layout.FrozenColumnLayoutManager
 import kotlin.math.abs
 
@@ -47,26 +48,59 @@ class BoundDividerDecoration(
                 child.right.toFloat(),
                 (child.bottom + dividerHeightPx).toFloat()
             )
-            // 根据 horizontalOffset 处理边界缩进
-            when {
-                lm.horizontalOffset < 0 -> {
-                    // 手指向右滑动越界（滑动到第一列左侧）
-                    rect.right = lm.frozenColumnWidth.toFloat()
-                    if (rect.right > rect.left) {
-                        // 绘制冻结(固定)列的分割线
-                        c.drawRect(rect, paint)
-                    }
-                    // 计算可滚动列的边界
-                    rect.left = lm.frozenColumnWidth + abs(lm.horizontalOffset).toFloat()
-                    rect.right = child.right.toFloat()
-                }
-                lm.horizontalOffset > lm.maxScrollWidth -> {
-                    // 手指向左滑动滑动越界（滑动到最后一列）
-                    rect.right = (child.right - (lm.horizontalOffset - lm.maxScrollWidth)).toFloat()
-                }
+            if (lm.frozenColumnPosition == FrozenColumnPosition.END) {
+                updateEndDivider(c, child, lm)
+            } else {
+                updateStartDivider(c, child, lm)
             }
             if (rect.right > rect.left) {
                 c.drawRect(rect, paint)
+            }
+        }
+    }
+
+    private fun updateStartDivider(
+        canvas: Canvas,
+        child: View,
+        layoutManager: FrozenColumnLayoutManager
+    ) {
+        when {
+            layoutManager.horizontalOffset < 0 -> {
+                rect.right = child.left + layoutManager.frozenColumnWidth.toFloat()
+                if (rect.right > rect.left) canvas.drawRect(rect, paint)
+                rect.left = rect.right + abs(layoutManager.horizontalOffset)
+                rect.right = child.right.toFloat()
+            }
+            layoutManager.horizontalOffset > layoutManager.maxScrollWidth -> {
+                rect.right = (
+                    child.right -
+                        (layoutManager.horizontalOffset - layoutManager.maxScrollWidth)
+                    ).toFloat()
+            }
+        }
+    }
+
+    private fun updateEndDivider(
+        canvas: Canvas,
+        child: View,
+        layoutManager: FrozenColumnLayoutManager
+    ) {
+        val frozenStart = child.right - layoutManager.frozenColumnWidth.toFloat()
+        when {
+            layoutManager.horizontalOffset < 0 -> {
+                rect.left = frozenStart
+                rect.right = child.right.toFloat()
+                if (rect.right > rect.left) canvas.drawRect(rect, paint)
+                rect.left = child.left + abs(layoutManager.horizontalOffset).toFloat()
+                rect.right = frozenStart
+            }
+            layoutManager.horizontalOffset > layoutManager.maxScrollWidth -> {
+                rect.left = frozenStart
+                rect.right = child.right.toFloat()
+                if (rect.right > rect.left) canvas.drawRect(rect, paint)
+                rect.left = child.left.toFloat()
+                rect.right = frozenStart -
+                    (layoutManager.horizontalOffset - layoutManager.maxScrollWidth)
             }
         }
     }

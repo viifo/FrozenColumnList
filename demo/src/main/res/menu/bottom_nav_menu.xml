@@ -3,13 +3,17 @@
     <item
         android:id="@+id/nav_watchlist"
         android:icon="@android:drawable/btn_star"
-        android:title="自选一" />
+        android:title="列表1" />
     <item
         android:id="@+id/nav_market"
         android:icon="@android:drawable/btn_star"
-        android:title="自选二" />
+        android:title="列表2" />
     <item
         android:id="@+id/nav_profile"
         android:icon="@android:drawable/btn_star"
-        android:title="自选三" />
+        android:title="列表3" />
+    <item
+        android:id="@+id/nav_end"
+        android:icon="@android:drawable/btn_star"
+        android:title="列表4" />
 </menu>

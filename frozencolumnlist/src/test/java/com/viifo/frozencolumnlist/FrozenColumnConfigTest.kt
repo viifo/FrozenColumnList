@@ -38,6 +38,16 @@ class FrozenColumnConfigTest {
     }
 
     @Test
+    fun endPosition_startsAtLastFrozenRange() {
+        val config = FrozenColumnConfig(
+            frozenColumnCount = 3,
+            frozenColumnPosition = FrozenColumnPosition.END
+        )
+
+        assertEquals(12, config.resolveFrozenStart(columnCount = 15))
+    }
+
+    @Test
     fun invalidFrozenRange_failsEarly() {
         val config = FrozenColumnConfig(
             frozenColumnCount = 3,
@@ -70,6 +80,17 @@ class FrozenColumnConfigTest {
         )
 
         assertEquals(0, config.resolveFrozenStart(columnCount = 10))
+    }
+
+    @Test
+    fun visibleColumnCount_acceptsFourColumnEndViewport() {
+        val config = FrozenColumnConfig(
+            frozenColumnCount = 2,
+            frozenColumnPosition = FrozenColumnPosition.END,
+            visibleColumnCount = 4
+        )
+
+        assertEquals(8, config.resolveFrozenStart(columnCount = 10))
     }
 
     @Test

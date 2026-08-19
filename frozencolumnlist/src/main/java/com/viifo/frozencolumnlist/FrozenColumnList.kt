@@ -20,7 +20,7 @@ import com.viifo.frozencolumnlist.provider.SpringBackAnimatorProvider
 import kotlin.math.abs
 
 /**
- * 统一固定列列表。通过 [FrozenColumnConfig] 支持前 n 列固定或中间 n 列固定。
+ * 统一固定列列表。通过 [FrozenColumnConfig] 支持前、中间或末尾 n 列固定。
  */
 class FrozenColumnList @JvmOverloads constructor(
     context: Context,
@@ -120,9 +120,6 @@ class FrozenColumnList @JvmOverloads constructor(
     }
 
     fun setColumnConfig(config: FrozenColumnConfig) {
-        require(config.frozenColumnPosition != FrozenColumnPosition.END) {
-            "FrozenColumnPosition.END is reserved and not implemented yet"
-        }
         val previous = columnConfig
         val structuralChange = layoutManager == null ||
             previous.frozenColumnPosition != config.frozenColumnPosition ||
@@ -141,9 +138,10 @@ class FrozenColumnList @JvmOverloads constructor(
 
         leadingLayoutManager?.removeHorizontalScrollListener(headerLeadingScrollListener)
         middleLayoutManager?.removeOffsetListener(headerMiddleOffsetListener)
-        if (config.frozenColumnPosition == FrozenColumnPosition.START) {
+        if (config.frozenColumnPosition != FrozenColumnPosition.MIDDLE) {
             val manager = FrozenColumnLayoutManager(context).also {
                 it.frozenColumnCount = config.frozenColumnCount
+                it.frozenColumnPosition = config.frozenColumnPosition
                 it.overScrollDamping = overScrollDamping
                 it.overScrollAnimatorThreshold = overScrollAnimatorThreshold
                 it.maxOverScrollDistance = maxOverScrollDistance
@@ -164,7 +162,7 @@ class FrozenColumnList @JvmOverloads constructor(
         genericStockAdapter?.columnConfig = config
         attachedHeader?.let(::attachHeader)
 
-        // START/MIDDLE 或固定范围变化时，旧 ViewHolder 的行根类型可能已不再适用。
+        // 固定位置或范围变化时，旧 ViewHolder 的行根类型和列状态可能已不再适用。
         genericStockAdapter?.let { currentAdapter ->
             adapter = null
             recycledViewPool.clear()
@@ -191,11 +189,22 @@ class FrozenColumnList @JvmOverloads constructor(
         if (header == null) return
         leadingLayoutManager?.removeHorizontalScrollListener(headerLeadingScrollListener)
         middleLayoutManager?.removeOffsetListener(headerMiddleOffsetListener)
+        if (attachedHeader !== header) {
+            attachedHeader?.onHeaderRowLayoutListener = null
+            attachedHeader?.onHorizontalScrollListener = null
+        }
         attachedHeader = header
+        header.onHeaderRowLayoutListener = { row ->
+            leadingLayoutManager?.syncColumns(row)
+            middleLayoutManager?.let {
+                header.updateMiddleOffsets(it.leftOffset, it.rightOffset)
+            }
+        }
         header.setColumnConfig(columnConfig)
         leadingLayoutManager?.addHorizontalScrollListener(headerLeadingScrollListener)
         middleLayoutManager?.addOffsetListener(headerMiddleOffsetListener)
         header.onHorizontalScrollListener = { dispatchTouchEvent(it) }
+        syncHeaderOffset(header)
     }
 
     fun resetHorizontalOffsets() {

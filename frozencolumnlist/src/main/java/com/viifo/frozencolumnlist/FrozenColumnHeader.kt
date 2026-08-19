@@ -32,6 +32,7 @@ class FrozenColumnHeader @JvmOverloads constructor(
 
     internal var headerRowView: ViewGroup? = null
         private set
+    internal var onHeaderRowLayoutListener: ((ViewGroup) -> Unit)? = null
 
     private var provider: ColumnProvider<out FrozenColumnData>? = null
     private var headerHolder: FrozenHeaderViewHolder? = null
@@ -42,9 +43,6 @@ class FrozenColumnHeader @JvmOverloads constructor(
     private var syntheticDownSent = false
 
     fun setColumnConfig(config: FrozenColumnConfig) {
-        require(config.frozenColumnPosition != FrozenColumnPosition.END) {
-            "FrozenColumnPosition.END is reserved and not implemented yet"
-        }
         columnConfig = config
         configureRow()
     }
@@ -101,11 +99,18 @@ class FrozenColumnHeader @JvmOverloads constructor(
         (headerRowView as? MiddleFrozenRowLayout)?.applyHorizontalOffsets(left, right)
     }
 
+    override fun onLayout(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {
+        super.onLayout(changed, left, top, right, bottom)
+        // visibleColumnCount 或固定列数量变化会重新计算列宽。布局完成后必须再次应用
+        // 当前偏移，否则表头会保留基于旧列宽计算的 translationX / clipBounds。
+        headerRowView?.let { onHeaderRowLayoutListener?.invoke(it) }
+    }
+
     private fun configureRow() {
         val row = headerRowView ?: return
         if (row.isEmpty()) return
         val frozenStart = columnConfig.resolveFrozenStart(row.childCount)
-        if (columnConfig.frozenColumnPosition == FrozenColumnPosition.START) {
+        if (columnConfig.frozenColumnPosition != FrozenColumnPosition.MIDDLE) {
             VisibleColumnWidthFitter.configure(
                 row = row,
                 frozenColumnStart = frozenStart,

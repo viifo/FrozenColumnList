@@ -22,8 +22,10 @@ import com.viifo.frozencolumnlist.provider.DefaultColumnProvider
 import com.viifo.frozencolumnlist.provider.FrozenColumnViewHolder
 import com.viifo.frozencolumnlist.provider.FrozenHeaderViewHolder
 
-/** 前置固定列 Demo；每行在 createItemRowView 中一次性创建。 */
-class StockColumnProvider : DefaultColumnProvider<StockModel>() {
+/** 行情列 Demo；可按正常或反向顺序创建完整行。 */
+class StockColumnProvider(
+    private val reverseColumns: Boolean = false
+) : DefaultColumnProvider<StockModel>() {
 
     private val columnIds = listOf(
         R.id.item_tv_price,
@@ -73,9 +75,9 @@ class StockColumnProvider : DefaultColumnProvider<StockModel>() {
     override fun createHeaderRowView(parent: ViewGroup, columnCount: Int): ViewGroup {
         return LinearLayoutCompat(parent.context).apply {
             orientation = LinearLayoutCompat.HORIZONTAL
-            repeat(columnCount) { index ->
+            columnOrder(columnCount).forEach { index ->
                 addView(
-                    createHeaderCell(index == 0),
+                    createHeaderCell(index == 0 && !reverseColumns),
                     if (index == 0) context.dp2px(120) else context.dp2px(80),
                     ViewGroup.LayoutParams.MATCH_PARENT
                 )
@@ -102,10 +104,18 @@ class StockColumnProvider : DefaultColumnProvider<StockModel>() {
             orientation = LinearLayoutCompat.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
             layoutParams = RecyclerView.LayoutParams(-1, -2)
-            repeat(columnCount) { index ->
+            columnOrder(columnCount).forEach { index ->
                 val cell = if (index == 0) createNameCell(this) else createValueCell(this, index, columnCount)
                 addView(cell, if (index == 0) context.dp2px(120) else context.dp2px(80), -1)
             }
+        }
+    }
+
+    private fun columnOrder(columnCount: Int): IntProgression {
+        return if (reverseColumns) {
+            (columnCount - 1) downTo 0
+        } else {
+            0 until columnCount
         }
     }
 
@@ -144,12 +154,13 @@ class StockColumnProvider : DefaultColumnProvider<StockModel>() {
     }
 
     private fun createNameCell(parent: ViewGroup): View = LinearLayoutCompat(parent.context).apply {
+        val contentGravity = if (reverseColumns) Gravity.END else Gravity.START
         orientation = LinearLayoutCompat.VERTICAL
-        gravity = Gravity.START or Gravity.CENTER_VERTICAL
+        gravity = contentGravity or Gravity.CENTER_VERTICAL
         setPadding(parent.context.dp2px(12), parent.context.dp2px(8), parent.context.dp2px(8), parent.context.dp2px(8))
         setBackgroundColor(Color.WHITE)
-        addView(text(parent, R.id.item_tv_name, Gravity.START, Color.BLACK, 14f))
-        addView(text(parent, R.id.item_tv_code, Gravity.START, Color.GRAY, 12f))
+        addView(text(parent, R.id.item_tv_name, contentGravity, Color.BLACK, 14f))
+        addView(text(parent, R.id.item_tv_code, contentGravity, Color.GRAY, 12f))
     }
 
     private fun createValueCell(parent: ViewGroup, index: Int, count: Int): View {

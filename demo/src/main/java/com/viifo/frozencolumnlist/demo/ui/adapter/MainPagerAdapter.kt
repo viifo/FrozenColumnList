@@ -6,6 +6,7 @@ import androidx.viewpager2.adapter.FragmentStateAdapter
 import com.viifo.frozencolumnlist.demo.ui.fragment.Watchlist2Fragment
 import com.viifo.frozencolumnlist.demo.ui.fragment.Watchlist3Fragment
 import com.viifo.frozencolumnlist.demo.ui.fragment.Watchlist1Fragment
+import com.viifo.frozencolumnlist.demo.ui.fragment.Watchlist4Fragment
 
 class MainPagerAdapter(
     fragmentActivity: FragmentActivity
@@ -15,10 +16,11 @@ class MainPagerAdapter(
         return when (position) {
             1 -> Watchlist2Fragment()
             2 -> Watchlist3Fragment()
+            3 -> Watchlist4Fragment()
             else -> Watchlist1Fragment()
         }
     }
 
-    override fun getItemCount() = 3
+    override fun getItemCount() = 4
 
 }

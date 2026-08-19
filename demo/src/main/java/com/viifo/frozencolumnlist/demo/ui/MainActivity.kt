@@ -41,6 +41,9 @@ class MainActivity : AppCompatActivity() {
                 R.id.nav_profile -> {
                     mBinding.viewPager2.setCurrentItem(2, true)
                 }
+                R.id.nav_end -> {
+                    mBinding.viewPager2.setCurrentItem(3, true)
+                }
             }
             true
         })

@@ -6,7 +6,7 @@ import android.view.ViewConfiguration
 import android.view.ViewGroup
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.viifo.frozencolumnlist.FrozenColumnHeader
+import com.viifo.frozencolumnlist.FrozenColumnPosition
 import com.viifo.frozencolumnlist.R
 import com.viifo.frozencolumnlist.ext.dp2px
 import com.viifo.frozencolumnlist.provider.DefaultSpringBackAnimatorProvider
@@ -40,6 +40,8 @@ class FrozenColumnLayoutManager(
 
     /** 冻结(固定)的列数 */
     internal var frozenColumnCount: Int = 1
+    /** 固定列位于行首或行尾；中间固定使用专用 LayoutManager。 */
+    internal var frozenColumnPosition: FrozenColumnPosition = FrozenColumnPosition.START
 
     /** 已添加的 RecyclerView */
     private var attachedRecyclerView: RecyclerView? = null
@@ -121,7 +123,10 @@ class FrozenColumnLayoutManager(
         horizontalOffset = horizontalOffset.coerceIn(0, maxScrollWidth)
         // 同步一次当前屏幕上的所有列的位移位置
         syncColumns()
-        if (horizontalOffset != previousOffset) dispatchScrollListener(horizontalOffset)
+        // END 模式在 offset=0 时也需要通知表头把末尾列锚定到右侧。
+        if (horizontalOffset != previousOffset || frozenColumnPosition == FrozenColumnPosition.END) {
+            dispatchScrollListener(horizontalOffset)
+        }
     }
 
     /**
@@ -258,33 +263,66 @@ class FrozenColumnLayoutManager(
      * @param viewGroup 行视图组
      */
     internal fun syncColumns(viewGroup: ViewGroup) {
-        // 处理 header 的偏移量
-        // 如果 FrozenColumnHeader 使用了 padding，需要额外处理
-        // 否则 View.x 会包含 padding，与 FrozenColumnList 中的 view 坐标系不一致
-        val offset = if (viewGroup is FrozenColumnHeader) viewGroup.paddingLeft else 0
-        // 处理滚动列
-        for (j in frozenColumnCount until viewGroup.childCount) {
-            val columnView = viewGroup.getChildAt(j)
-            // 不能只依赖行上记录的 offset。回收复用、requestLayout 或 ItemAnimator 都可能
-            // 改写实际 translationX/clipBounds，因此每次同步都校正真实 View 状态。
-            columnView.translationX = -horizontalOffset.toFloat()
-            // 如果 View 的左边缘 < 固定列宽度，说明它越界了
-            // horizontalOffset > 0 手指向右滑动越界时 columnView.x 会变大，通常不需要裁剪左侧
-            if (horizontalOffset > 0 && columnView.x  < frozenColumnWidth + offset) {
-                // 计算需要裁剪掉的左侧宽度
-                val clipLeft = (frozenColumnWidth + offset - columnView.x).toInt()
-                // 使用 View 提供的矩形裁剪（API 21+）
-                clipRect.set(clipLeft, 0, columnView.width, columnView.height)
-                columnView.clipBounds = clipRect
-            } else {
-                // 当之前有过裁剪时设置为 null
-                if (columnView.clipBounds != null) {
-                    columnView.clipBounds = null
-                }
-            }
+        if (viewGroup.childCount == 0) return
+        when (frozenColumnPosition) {
+            FrozenColumnPosition.START -> syncStartColumns(viewGroup)
+            FrozenColumnPosition.END -> syncEndColumns(viewGroup)
+            FrozenColumnPosition.MIDDLE -> error("MIDDLE uses MiddleFrozenColumnLayoutManager")
         }
         // 记录当前行的滚动偏移量
         viewGroup.setTag(R.id.tag_frozencolumnlist_last_offset, horizontalOffset)
+    }
+
+    private fun syncStartColumns(viewGroup: ViewGroup) {
+        val safeFrozenCount = frozenColumnCount.coerceAtMost(viewGroup.childCount)
+        val frozenEnd = (0 until safeFrozenCount).sumOf { viewGroup.getChildAt(it).width } +
+            viewGroup.paddingLeft
+        for (index in 0 until viewGroup.childCount) {
+            val columnView = viewGroup.getChildAt(index)
+            if (index < safeFrozenCount) {
+                columnView.translationX = 0f
+                columnView.clipBounds = null
+                continue
+            }
+            // 不能只依赖行上记录的 offset。回收复用、requestLayout 或 ItemAnimator 都可能
+            // 改写实际 translationX/clipBounds，因此每次同步都校正真实 View 状态。
+            columnView.translationX = -horizontalOffset.toFloat()
+            if (horizontalOffset > 0 && columnView.x < frozenEnd) {
+                val clipLeft = (frozenEnd - columnView.x).toInt().coerceIn(0, columnView.width)
+                clipRect.set(clipLeft, 0, columnView.width, columnView.height)
+                columnView.clipBounds = clipRect
+            } else {
+                columnView.clipBounds = null
+            }
+        }
+    }
+
+    private fun syncEndColumns(viewGroup: ViewGroup) {
+        val safeFrozenCount = frozenColumnCount.coerceAtMost(viewGroup.childCount)
+        val frozenStartIndex = viewGroup.childCount - safeFrozenCount
+        val lastColumn = viewGroup.getChildAt(viewGroup.childCount - 1)
+        val viewportEnd = viewGroup.width - viewGroup.paddingRight
+        val frozenTranslation = viewportEnd - lastColumn.right
+        val firstFrozenColumn = viewGroup.getChildAt(frozenStartIndex)
+        val frozenStart = firstFrozenColumn.left + frozenTranslation
+
+        for (index in 0 until viewGroup.childCount) {
+            val columnView = viewGroup.getChildAt(index)
+            if (index >= frozenStartIndex) {
+                columnView.translationX = frozenTranslation.toFloat()
+                columnView.clipBounds = null
+                continue
+            }
+            columnView.translationX = -horizontalOffset.toFloat()
+            val translatedLeft = columnView.left - horizontalOffset
+            val clipRight = (frozenStart - translatedLeft).coerceIn(0, columnView.width)
+            if (clipRight < columnView.width) {
+                clipRect.set(0, 0, clipRight, columnView.height)
+                columnView.clipBounds = clipRect
+            } else {
+                columnView.clipBounds = null
+            }
+        }
     }
 
     /**
@@ -303,10 +341,16 @@ class FrozenColumnLayoutManager(
         }
         var totalWidth = 0
         var fixedWidth = 0
+        val frozenStartIndex = when (frozenColumnPosition) {
+            FrozenColumnPosition.START -> 0
+            FrozenColumnPosition.END -> (row.childCount - frozenColumnCount).coerceAtLeast(0)
+            FrozenColumnPosition.MIDDLE -> error("MIDDLE uses MiddleFrozenColumnLayoutManager")
+        }
+        val frozenEndIndex = (frozenStartIndex + frozenColumnCount).coerceAtMost(row.childCount)
         for (i in 0 until row.childCount) {
             val childWidth = row.getChildAt(i).width
             totalWidth += childWidth
-            if (i < frozenColumnCount) {
+            if (i in frozenStartIndex until frozenEndIndex) {
                 fixedWidth += childWidth
             }
         }

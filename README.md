@@ -7,13 +7,14 @@
 面向行情、自选股等多列数据场景的高性能列表。统一的 `FrozenColumnList` 支持：
 
 - 前 n 列固定，其余列横向滚动；
+- 末尾 n 列固定，其余列横向滚动；
 - 中间 n 列固定，左右两侧独立滚动或镜像同步滚动；
 - 左右区域分别设置普通背景、选中背景；
 - 固定列直接通过 XML 或代码设置背景、圆角、字体、elevation、阴影等样式；
 - 与 `SmartRefreshLayout`、EmptyView、FooterView、DiffUtil 和 ViewPager2 嵌套场景配合使用。
 
 ```kotlin
-implementation("com.github.viifo:FrozenColumnList:2.0.0")
+implementation("com.github.viifo:FrozenColumnList:2.1.0")
 ```
 
 ## 2.0 升级提示
@@ -62,7 +63,7 @@ stockHeader.setHeaderData(headers)
 
 - `START`：固定前 n 列，已实现；
 - `MIDDLE`：固定从 `middleColumnStart` 开始的 n 列，已实现；
-- `END`：API 已预留，当前调用会明确抛出未实现异常。
+- `END`：固定末尾 n 列，已实现。
 
 中间固定模式下，`SYNCHRONIZED` 是视觉镜像同步：拖动左侧时，右侧向相反方向移动相同
 进度，使两侧同时靠近或远离中间固定列。
@@ -208,30 +209,6 @@ stockList.setOnSideDoubleClickListener { _, position, side ->
 中间固定模式会在手势超过阈值后才锁定水平方向，降低短促快速垂直滑动被误判为横向滑动的
 概率。Demo 同时关闭了 `SmartRefreshLayout` 的 nested scroll，以避免刷新容器争抢横向手势。
 
-## 已完成的性能与稳定性优化
-
-- 每个表头或 ViewHolder 只创建/inflate 一次完整行，避免按列重复解析 XML；
-- 使用 `ListAdapter + DiffUtil`，只更新发生变化的数据；
-- 可通过自定义 ViewHolder 缓存子 View，避免 bind 阶段重复查找；
-- 水平偏移由 LayoutManager 保存，新出现或复用的行会立即应用当前偏移；
-- 同步时校验实际 `translationX` 和 `clipBounds`，不只依赖行内 offset 标记；
-- 横向滚动裁剪复用 `Rect`，不在逐帧逐列路径创建临时对象；
-- 左右选中背景使用 payload 局部刷新；
-- 水平/垂直方向锁定带可配置阈值，减少快速垂直滑动误触；
-- 配置结构发生变化时清空不兼容的回收池，避免复用错误行根；
-- Provider 返回的列数、行根类型和 ViewHolder 归属会尽早校验，错误配置直接给出异常。
-
-## 后续优化评估
-
-| 优化项 | 收益 | 风险/成本 | 建议 |
-| --- | --- | --- | --- |
-| 自定义 ViewHolder 缓存全部列引用 | 中高，减少 bind 查找 | 低 | 业务 Provider 优先采用 |
-| 为大列表提供稳定 ID | 中，降低更新闪烁 | ID 冲突会造成错误复用 | 仅在业务 ID 全局唯一时启用 |
-| 合并高频行情更新并使用 payload | 高，降低主线程 bind 次数 | 需业务侧聚合更新 | 高频数据场景优先 |
-| 关闭不必要的 change animation | 中，避免动画改写位移并减少过绘 | 会失去默认更新动画 | 大数据或高频刷新推荐 |
-| 缓存每种 viewType 的列宽/滚动范围 | 中，减少 layout 计算 | 动态宽度时需可靠失效 | 可作为下一阶段 |
-| 使用基准测试和 Macrobenchmark | 不直接提速，但可防回退 | 需要测试设备和基准模块 | 发布 2.0 前建议 |
-| 支持末尾 n 列固定 | 功能扩展 | 手势、裁剪和回弹边界需新增测试 | 后续独立实现 |
 
 ## 常用 API
 
@@ -246,6 +223,52 @@ stockList.setOnSideDoubleClickListener { _, position, side ->
 - `setSideSelected` / `toggleSideSelected` / `clearSideSelection`
 - `setSpringBackAnimatorProvider(provider)`
 - `setupViewPager2TouchConflictResolution(enabled)`
+
+
+## 版本日志
+
+### v2.1.0
+
+- 新增 `FrozenColumnPosition.END`，支持将末尾 n 列固定在列表和表头右侧；
+- 支持运行时切换末尾固定列数量，并保持表头、数据行和水平滚动范围同步；
+- 修复 `visibleColumnCount` 在 RecyclerView 首次布局及 ViewHolder 复用时可能未正确应用的问题；
+- 修复固定列数量变化后表头普通列宽度、裁剪区域和滚动位置错乱的问题；
+- `BoundDividerDecoration` 新增末尾固定模式的越界分割线处理；
+- 新增 `Watchlist4Fragment`，演示反向列顺序、最右侧名称列和总计显示 4 列；
+- Demo 底部导航扩展为“列表1”至“列表4”，并始终显示文字标签。
+
+### v2.0.0
+
+- 新增 `FrozenColumnConfig`，统一配置固定列数量、位置、滚动模式、可见列数量和手势阈值；
+- 支持固定前 n 列，以及固定中间 n 列；
+- 中间固定模式支持左右独立滚动和镜像同步滚动；
+- 支持按 `visibleColumnCount` 自动等分普通列宽度，适配不同屏幕尺寸；
+- 表头和列表统一使用 `FrozenColumnHeader`、`FrozenColumnList`，不再需要独立的中间固定组件；
+- Provider 改为一次创建或 inflate 完整行，并支持自定义整行 `FrozenColumnViewHolder`；
+- 新增左右区域普通背景、选中背景、单击和双击回调，以及独立选中状态管理；
+- 新增中间固定列示例及完整行 XML 示例。
+
+- 修复新出现或回收复用的行未及时应用当前水平偏移的问题；
+- 修复同步滚动时行内偏移标记与实际 `translationX`、`clipBounds` 不一致的问题；
+- 修复配置结构变化后复用旧行根可能导致的布局异常；
+- 修复快速垂直滑动可能被误判为横向滑动的问题；
+- 增加 Provider 列数、行根类型和 ViewHolder 归属校验，使错误配置尽早抛出明确异常。
+
+- 每个表头或 ViewHolder 只创建或 inflate 一次完整行，避免按列重复解析 XML；
+- 支持在自定义 ViewHolder 中缓存子 View，减少 bind 阶段的重复查找；
+- 横向滚动裁剪复用 `Rect`，减少逐帧滚动时的临时对象创建；
+- 左右选中背景通过 payload 局部刷新，避免整行重新绑定。
+
+### v1.0.0
+
+- 支持固定左侧列，其余列横向滚动；
+- 支持列表与表头联动滚动，以及表头点击排序；
+- 支持水平越界阻尼和回弹动画，并可自定义回弹动画 Provider；
+- 使用 `ListAdapter + DiffUtil` 更新列表数据；
+- 支持 Item、Item 子 View、EmptyView 和 FooterView 的点击事件；
+- 支持 EmptyView、FooterView、Item 更新动画和分割线；
+- 支持与下拉刷新、加载更多及 ViewPager2 嵌套场景配合使用。
+
 
 ## License
 
