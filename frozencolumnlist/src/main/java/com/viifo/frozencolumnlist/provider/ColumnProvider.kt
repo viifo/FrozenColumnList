@@ -6,6 +6,7 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.annotation.IdRes
 import com.viifo.frozencolumnlist.FrozenColumnSide
+import com.viifo.frozencolumnlist.layout.FrozenTextRowLayout
 import com.viifo.frozencolumnlist.data.FrozenColumnData
 import com.viifo.frozencolumnlist.data.FrozenHeaderData
 
@@ -18,7 +19,11 @@ interface FrozenColumnViewHolder<T : FrozenColumnData> {
     fun <V : View> getView(@IdRes id: Int): V = rowView.findViewById(id)
 
     @Suppress("UNCHECKED_CAST")
-    fun <V : View> getColumnView(columnIndex: Int): V = rowView.getChildAt(columnIndex) as V
+    fun <V : View> getColumnView(columnIndex: Int): V = if (rowView is FrozenTextRowLayout) {
+        requireNotNull((rowView as FrozenTextRowLayout).getFrozenColumnView(columnIndex)) {
+            "Scrolling text columns have no individual View; use FrozenTextRowLayout column APIs"
+        } as V
+    } else rowView.getChildAt(columnIndex) as V
 }
 
 /** 表头整行 ViewHolder。 */
@@ -31,7 +36,11 @@ interface FrozenHeaderViewHolder {
     fun <V : View> getView(@IdRes id: Int): V = rowView.findViewById(id)
 
     @Suppress("UNCHECKED_CAST")
-    fun <V : View> getColumnView(columnIndex: Int): V = rowView.getChildAt(columnIndex) as V
+    fun <V : View> getColumnView(columnIndex: Int): V = if (rowView is FrozenTextRowLayout) {
+        requireNotNull((rowView as FrozenTextRowLayout).getFrozenColumnView(columnIndex)) {
+            "Scrolling text columns have no individual View; use FrozenTextRowLayout column APIs"
+        } as V
+    } else rowView.getChildAt(columnIndex) as V
 }
 
 /**
@@ -52,6 +61,9 @@ interface ColumnProvider<T : FrozenColumnData> {
     fun getItemViewType(data: T): Int = data.columnCount
     fun createItemRowView(parent: ViewGroup, viewType: Int, columnCount: Int): ViewGroup
     fun createItemViewHolder(rowView: ViewGroup, viewType: Int): FrozenColumnViewHolder<T>
+
+    /** Optional field-level update payload. The default remains a full bind. */
+    fun getChangePayload(oldItem: T, newItem: T): Any? = null
 
     fun getSideBackgroundColor(
         context: Context,

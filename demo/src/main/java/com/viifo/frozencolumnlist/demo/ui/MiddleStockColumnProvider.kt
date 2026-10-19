@@ -2,16 +2,13 @@ package com.viifo.frozencolumnlist.demo.ui
 
 import android.content.Context
 import android.graphics.Color
-import android.view.LayoutInflater
-import android.view.ViewGroup
-import androidx.appcompat.widget.AppCompatTextView
+import android.widget.TextView
 import com.viifo.frozencolumnlist.FrozenColumnSide
 import com.viifo.frozencolumnlist.data.FrozenHeaderData
-import com.viifo.frozencolumnlist.demo.R
 import com.viifo.frozencolumnlist.demo.data.SymmetricQuoteModel
-import com.viifo.frozencolumnlist.provider.DefaultColumnProvider
-import com.viifo.frozencolumnlist.provider.FrozenColumnViewHolder
-import com.viifo.frozencolumnlist.provider.FrozenHeaderViewHolder
+import com.viifo.frozencolumnlist.provider.TextColumnProvider
+import com.viifo.frozencolumnlist.data.FrozenTextColumn
+import com.viifo.frozencolumnlist.demo.ext.dp2px
 
 /** 左右区域的灰色背景分界配置，null 表示该侧不启用灰色区域。 */
 data class SideBackgroundBoundaryConfig(
@@ -21,49 +18,40 @@ data class SideBackgroundBoundaryConfig(
     val rightGrayThroughId: Int? = null
 )
 
-/** Watchlist3 示例：表头和列表项都只 inflate 一次完整的 15 列 XML。 */
+/** Watchlist3 示例：15 个逻辑列分为左侧文本 View、固定 TextView、右侧文本 View。 */
 class MiddleStockColumnProvider(
     private val backgroundBoundary: SideBackgroundBoundaryConfig = SideBackgroundBoundaryConfig()
-) : DefaultColumnProvider<SymmetricQuoteModel>() {
+) : TextColumnProvider<SymmetricQuoteModel>() {
 
-    override fun createHeaderRowView(parent: ViewGroup, columnCount: Int): ViewGroup {
-        return LayoutInflater.from(parent.context)
-            .inflate(R.layout.header_symmetric_quote_row, parent, false) as ViewGroup
-    }
-
-    override fun bindHeaderRow(holder: FrozenHeaderViewHolder, data: List<FrozenHeaderData>) {
-        data.forEachIndexed { index, item ->
-            holder.getColumnView<AppCompatTextView>(index).text = item.name
+    override fun getHeaderColumns(context: Context, data: List<FrozenHeaderData>): List<FrozenTextColumn> =
+        data.mapIndexed { index, item ->
+            column(context, index, item.name.orEmpty(), true).copy(id = item.id ?: index)
         }
+
+    override fun getItemColumns(context: Context, data: SymmetricQuoteModel): List<FrozenTextColumn> =
+        data.values.mapIndexed { index, value -> column(context, index, value, false) }
+
+    override fun getChangePayload(oldItem: SymmetricQuoteModel, newItem: SymmetricQuoteModel): Any =
+        newItem.values.indices.filter { oldItem.values.getOrNull(it) != newItem.values[it] }
+
+    override fun styleFrozenColumnView(view: TextView, columnIndex: Int, header: Boolean) {
+        view.setBackgroundColor(Color.WHITE)
+        view.elevation = view.context.dp2px(8).toFloat()
+        view.setTypeface(view.typeface, android.graphics.Typeface.BOLD)
     }
 
-    override fun createItemRowView(
-        parent: ViewGroup,
-        viewType: Int,
-        columnCount: Int
-    ): ViewGroup {
-        return LayoutInflater.from(parent.context)
-            .inflate(R.layout.item_symmetric_quote_row, parent, false) as ViewGroup
-    }
-
-    override fun bindItemRow(
-        holder: FrozenColumnViewHolder<SymmetricQuoteModel>,
-        data: SymmetricQuoteModel,
-        payloads: List<Any?>
-    ) {
-        data.values.forEachIndexed { index, value ->
-            holder.getColumnView<AppCompatTextView>(index).apply {
-                text = value
-                setTextColor(
-                    if (index in CHANGE_COLUMN_INDICES) {
-                        if (value.startsWith("+")) Color.RED else Color.rgb(0, 145, 90)
-                    } else {
-                        Color.BLACK
-                    }
-                )
-            }
-        }
-    }
+    private fun column(context: Context, index: Int, text: String, header: Boolean) = FrozenTextColumn(
+        id = index + 1,
+        width = context.dp2px(if (index == 7) 96 else 86),
+        text = text,
+        textColor = if (header) Color.rgb(102, 102, 102) else if (index in CHANGE_COLUMN_INDICES) {
+            if (text.startsWith("+")) Color.RED else Color.rgb(0, 145, 90)
+        } else Color.BLACK,
+        textSizeSp = if (header) 12f else 13f,
+        bold = index == 7,
+        paddingStart = context.dp2px(6),
+        paddingEnd = context.dp2px(6)
+    )
 
     override fun getSideBackgroundColor(
         context: Context,

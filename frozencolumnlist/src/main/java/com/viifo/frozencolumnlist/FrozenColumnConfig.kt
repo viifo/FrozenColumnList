@@ -6,7 +6,7 @@ enum class FrozenColumnPosition { START, MIDDLE, END }
 /** 中间固定模式下左右区域的滚动方式。 */
 enum class FrozenColumnScrollMode { INDEPENDENT, SYNCHRONIZED }
 
-/** 中间固定列左右两侧的区域。 */
+/** 水平方向的左右区域或默认展示侧。 */
 enum class FrozenColumnSide { LEFT, RIGHT }
 
 /**
@@ -20,6 +20,9 @@ enum class FrozenColumnSide { LEFT, RIGHT }
  * @param visibleColumnCount 一屏完整显示的列数（包含固定列）；设置后普通列等宽适配可用空间。
  * 中间固定模式要求固定列两侧显示相同数量的普通列
  * @param horizontalScrollThreshold 水平手势触发阈值（像素）；null 时使用系统 touchSlop
+ * @param initialScrollSide START / END 模式首次布局和主动重置时展示普通列的哪一端。
+ * 默认 LEFT；RIGHT 展示最右侧普通列。已有数据时改变固定范围，普通列始终紧邻新的固定区，
+ * 不受此选项影响。MIDDLE 模式仍默认展示紧邻固定列的两侧列
  */
 data class FrozenColumnConfig(
     val frozenColumnCount: Int = 1,
@@ -28,7 +31,8 @@ data class FrozenColumnConfig(
     val scrollMode: FrozenColumnScrollMode = FrozenColumnScrollMode.INDEPENDENT,
     val frozenViewportStart: Int? = null,
     val visibleColumnCount: Int? = null,
-    val horizontalScrollThreshold: Int? = null
+    val horizontalScrollThreshold: Int? = null,
+    val initialScrollSide: FrozenColumnSide = FrozenColumnSide.LEFT
 ) {
     init {
         require(frozenColumnCount > 0) { "frozenColumnCount must be greater than 0" }

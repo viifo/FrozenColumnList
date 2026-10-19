@@ -241,8 +241,13 @@ class MiddleFrozenColumnLayoutManager(context: Context) :
     private fun updateScrollRanges() {
         val row = (0 until childCount)
             .asSequence()
-            .mapNotNull { getChildAt(it) as? MiddleFrozenRowLayout }
-            .firstOrNull() ?: return
+            .mapNotNull { getChildAt(it) as? FrozenRowViewport }
+            .firstOrNull()
+        if (row == null) {
+            maxLeftOffset = 0
+            maxRightOffset = 0
+            return
+        }
         maxLeftOffset = row.maxLeftOffset
         maxRightOffset = row.maxRightOffset
     }
@@ -286,12 +291,12 @@ class MiddleFrozenColumnLayoutManager(context: Context) :
             // 使用 RecyclerView 的原始子 View 集合，覆盖预测布局和 ItemAnimator 期间被
             // LayoutManager 临时隐藏、但仍可能绘制在屏幕上的行。
             for (index in 0 until recyclerView.childCount) {
-                (recyclerView.getChildAt(index) as? MiddleFrozenRowLayout)
+                (recyclerView.getChildAt(index) as? FrozenRowViewport)
                     ?.applyHorizontalOffsets(leftOffset, rightOffset)
             }
         } else {
             for (index in 0 until childCount) {
-                (getChildAt(index) as? MiddleFrozenRowLayout)
+                (getChildAt(index) as? FrozenRowViewport)
                     ?.applyHorizontalOffsets(leftOffset, rightOffset)
             }
         }

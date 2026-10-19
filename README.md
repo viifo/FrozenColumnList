@@ -4,18 +4,36 @@
 
 [中文](README.md) | [English](README_EN.md)
 
-面向行情、自选股等多列数据场景的高性能列表。统一的 `FrozenColumnList` 支持：
+支持固定列和横向滚动的 RecyclerView，适用于行情、自选股等多列列表。
 
 - 前 n 列固定，其余列横向滚动；
 - 末尾 n 列固定，其余列横向滚动；
 - 中间 n 列固定，左右两侧独立滚动或镜像同步滚动；
+- 普通列可按滚动区域合并绘制文本，固定列保留 TextView；
 - 左右区域分别设置普通背景、选中背景；
 - 固定列直接通过 XML 或代码设置背景、圆角、字体、elevation、阴影等样式；
 - 与 `SmartRefreshLayout`、EmptyView、FooterView、DiffUtil 和 ViewPager2 嵌套场景配合使用。
 
 ```kotlin
-implementation("com.github.viifo:FrozenColumnList:2.1.0")
+implementation("com.github.viifo:FrozenColumnList:2.2.0")
 ```
+
+在依赖仓库中添加 `maven { url = uri("https://jitpack.io") }`。
+
+## Demo 与预览
+
+下载 [APK-Demo](https://github.com/viifo/FrozenColumnList/releases)。列表3演示中间固定，
+列表4演示末尾固定和初始滚动方向切换，四个列表均使用区域文本渲染。
+
+| 滑动效果 | 水平越界回弹 |
+| :---: | :---: |
+| <img src="./screenshots/p1.gif" height="500" alt="固定列与横向滚动" /> | <img src="./screenshots/p2.gif" height="500" alt="水平越界回弹" /> |
+| **搭配刷新控件1** | **搭配刷新控件2** |
+| <img src="./screenshots/p3.gif" height="500" alt="下拉刷新" /> | <img src="./screenshots/p4.gif" height="500" alt="刷新和加载更多" /> |
+| **Item 更新动画** | **联动 ViewPager** |
+| <img src="./screenshots/p5.gif" height="500" alt="行情更新动画" /> | <img src="./screenshots/p6.gif" height="500" alt="ViewPager 嵌套滚动" /> |
+| **EmptyView** | **FooterView** |
+| <img src="./screenshots/p7.jpg" height="500" alt="空列表" /> | <img src="./screenshots/p8.jpg" height="500" alt="列表底部" /> |
 
 ## 2.0 升级提示
 
@@ -35,7 +53,8 @@ implementation("com.github.viifo:FrozenColumnList:2.1.0")
 | 中间固定使用独立列表组件 | 统一使用 `FrozenColumnList` / `FrozenColumnHeader` |
 | 框架分别回调每一列 bind | 自定义整行 ViewHolder 集中缓存和绑定 |
 
-升级后需要重写 `ColumnProvider`。XML 行根的直接子 View 必须与数据列按顺序一一对应。
+升级后需要重写 `ColumnProvider`。传统 XML 行根的直接子 View 必须与数据列按顺序一一对应。
+下方的可选 `TextColumnProvider` 使用逻辑列，不受此要求限制。
 列宽默认应直接在完整行 XML 或 `createItemRowView()` 中设置。中间固定模式如果配置了
 `visibleColumnCount`，固定列继续采用 XML 宽度，普通列则由组件等宽计算。
 
@@ -61,21 +80,113 @@ stockHeader.setHeaderData(headers)
 
 `FrozenColumnPosition`：
 
-- `START`：固定前 n 列，已实现；
-- `MIDDLE`：固定从 `middleColumnStart` 开始的 n 列，已实现；
-- `END`：固定末尾 n 列，已实现。
+- `START`：固定前 n 列；
+- `MIDDLE`：固定从 `middleColumnStart` 开始的 n 列；
+- `END`：固定末尾 n 列。
 
 中间固定模式下，`SYNCHRONIZED` 是视觉镜像同步：拖动左侧时，右侧向相反方向移动相同
 进度，使两侧同时靠近或远离中间固定列。
 
 `visibleColumnCount` 必须大于固定列数量；在 MIDDLE 模式下，减去固定列数量后必须是偶数。设置为 5、
-固定 1 列时，组件保留固定列 XML 宽度，并将剩余可用宽度四等分，因此不同屏幕宽度下都能
+固定 1 列时，组件保留固定列宽度，并将剩余可用宽度四等分，因此不同屏幕宽度下都能
 完整显示“左 2 + 固定 1 + 右 2”。START 模式设置为 4、固定 1 列时，则完整显示
-“固定 1 + 普通 3”。未设置时，所有列继续使用 XML 中声明的宽度。
+“固定 1 + 普通 3”。未设置时，各列使用 XML 或 `FrozenTextColumn.width` 中指定的宽度。
 
-## 完整行 XML
+### 初始滚动方向
 
-中间固定模式的完整行根必须使用 `MiddleFrozenRowLayout`。每个单元格仍然可以独立设置样式：
+`START` / `END` 模式通过 `initialScrollSide` 选择普通列默认展示哪一端，与固定列的位置无关。
+默认值 `LEFT` 展示最左侧普通列；设置为 `RIGHT` 则展示最右侧普通列：
+
+```kotlin
+stockList.setColumnConfig(FrozenColumnConfig(
+    frozenColumnCount = 1,
+    frozenColumnPosition = FrozenColumnPosition.END,
+    visibleColumnCount = 4,
+    initialScrollSide = FrozenColumnSide.RIGHT
+))
+```
+
+首次加载数据和调用 `resetHorizontalOffsets()` 时，会在列宽计算完成后应用此方向。
+修改 `initialScrollSide` 也会立即切到所选端；普通数据刷新保留手动滚动位置。
+已有数据时改变固定范围或可见列数，普通列始终紧邻新的固定区，与 `initialScrollSide` 无关：
+END 展示最右侧普通列，START 展示最左侧普通列，避免固定列与普通列之间的列序断开。
+`updateHorizontalOffset(0)` 滚动到最左端。表头自动同步，XML 行和文本行均支持。
+MIDDLE 模式不使用此配置，默认展示紧邻固定列的左右两侧普通列。
+
+Demo 列表4默认固定 1 列并展示最右侧；顶部开关切换初始滚动方向。
+固定列按钮按 1 → 2 → 3 → 1 循环切换，普通列随固定范围重新对齐。
+
+## 区域文本渲染
+
+`TextColumnProvider` 将同一滚动区域的普通列合并绘制，减少每行的 TextView 数量。
+自定义 View 行仍可使用 `ColumnProvider` 或 `DefaultColumnProvider`。
+
+- 共 15 列、中间固定 1 列：左侧 `FrozenRowTextView` 绘制 7 列，中间保留 1 个 TextView，右侧 `FrozenRowTextView` 绘制 7 列。
+- 共 3 个内容 View，加上 `FrozenTextRowLayout` 行容器共 4 个 View；表头采用相同结构。
+- START / END 固定 1 列时为 2 个内容 View；固定 n 列时保留 n 个 TextView，其他列按滚动区域合并。
+- 普通列支持颜色、字号、对齐、内边距、背景、末尾图标、双行文本和省略显示；固定列可继续设置原生背景、圆角及 elevation。
+- `visibleColumnCount` 只调整普通列宽度。表头与数据行应使用一致的列顺序和原始宽度。
+- 文本布局按列缓存，未变化的列复用缓存。可通过 `getChangePayload` 提供更新标记；左右选中背景通过独立 payload 刷新。
+
+```kotlin
+class TextQuoteProvider : TextColumnProvider<Quote>() {
+    override fun getHeaderColumns(
+        context: Context,
+        data: List<FrozenHeaderData>
+    ): List<FrozenTextColumn> = data.mapIndexed { index, header ->
+        FrozenTextColumn(
+            id = index + 1,
+            width = context.dp2px(if (index == 7) 96 else 86),
+            text = header.name.orEmpty(),
+            textSizeSp = 12f
+        )
+    }
+
+    override fun getItemColumns(context: Context, data: Quote): List<FrozenTextColumn> =
+        data.values.mapIndexed { index, value ->
+            FrozenTextColumn(
+                id = index + 1,
+                width = context.dp2px(if (index == 7) 96 else 86),
+                text = value
+            )
+        }
+
+    override fun styleFrozenColumnView(view: TextView, columnIndex: Int, header: Boolean) {
+        view.setBackgroundColor(Color.WHITE)
+        view.elevation = view.context.dp2px(8).toFloat()
+    }
+}
+```
+
+`dp2px` 为示例中的尺寸换算扩展。`FrozenTextColumn.width`、内边距使用 px，字号使用 sp；
+列 ID 在同一行内必须唯一且应保持稳定。`secondaryText` 可显示名称下方的股票代码。
+固定列样式回调在绑定后执行，因此复用、刷新和固定列范围变化后也会重新应用。
+
+```kotlin
+stockList.setOnColumnClickListener { view, rowPosition, columnIndex, columnId ->
+    val row = view as FrozenTextRowLayout
+    val visibleBounds = Rect()
+    if (row.getColumnBoundsById(columnId, visibleBounds)) {
+        // visibleBounds 是行容器坐标中的可见矩形，可用于高亮或弹窗定位
+    }
+}
+```
+
+`columnAt(x, y)` 返回行坐标对应的逻辑列索引；`getColumnBounds(index, outRect)` /
+`getColumnBoundsById(id, outRect)` 排除被裁剪的部分，不可见列返回 false 并清空矩形。
+滚动、固定列配置切换后，绘制和点击使用同一套坐标。左右文本区域提供逐列无障碍节点。
+
+滚动列没有独立 View，通过 `updateColumn`、`getColumnById` 和列点击回调访问，
+不能通过 `findViewById` 或 `getColumnView<TextView>` 获取。固定列可通过 `getFrozenColumnView` 获取。
+文本行支持 Item 点击、左右单击/双击、选中、表头点击/排序、回弹、EmptyView 和 FooterView。
+表头点击回调中的 `position` 始终是逻辑列索引；滚动列的 `view` 为行容器。
+数据行的 `setOnColumnClickListener` 与 Item 点击一样即时触发；同时设置左右单击和双击监听时，单击在双击判定结束后触发。
+
+Demo 中的 `StockItemAnimator` 演示文本列的涨跌高亮动画；15 列 XML 布局可作为自定义 View 行的参考。
+
+## 完整行 XML（传统 Provider）
+
+传统 Provider 在中间固定模式下的完整行根必须使用 `MiddleFrozenRowLayout`。每个单元格仍然可以独立设置样式：
 
 ```xml
 <com.viifo.frozencolumnlist.layout.MiddleFrozenRowLayout
@@ -103,7 +214,7 @@ stockHeader.setHeaderData(headers)
 </com.viifo.frozencolumnlist.layout.MiddleFrozenRowLayout>
 ```
 
-`START` 模式可使用任意 `ViewGroup` 作为行根，同样要求所有列是直接子 View。
+`START` / `END` 模式可使用任意 `ViewGroup` 作为行根，同样要求所有列是直接子 View。
 
 ## Provider 与整行 ViewHolder
 
@@ -181,7 +292,7 @@ override fun getSideBackgroundColor(
 }
 
 stockList.setOnSideClickListener { _, position, side ->
-    // 单击回调仍然保留；同时设置双击监听时，会在双击判定结束后触发
+    // 同时设置双击监听时，单击在双击判定结束后触发
 }
 
 stockList.setOnSideDoubleClickListener { _, position, side ->
@@ -219,6 +330,7 @@ stockList.setOnSideDoubleClickListener { _, position, side ->
 - `resetHorizontalOffsets()`
 - `updateHorizontalOffset(offset)` / `updateHorizontalOffsets(left, right)`
 - `setOnItemClickListener` / `setOnItemChildClickListener`
+- `setOnColumnClickListener`（文本 Provider 的逻辑列点击）
 - `setOnSideClickListener` / `setOnSideDoubleClickListener`
 - `setSideSelected` / `toggleSideSelected` / `clearSideSelection`
 - `setSpringBackAnimatorProvider(provider)`
@@ -226,6 +338,15 @@ stockList.setOnSideDoubleClickListener { _, position, side ->
 
 
 ## 版本日志
+
+### v2.2.0
+
+- 新增 `TextColumnProvider` 和 `FrozenTextColumn`，普通列按滚动区域合并绘制，固定列保留 TextView，支持 START、MIDDLE 和 END 模式；
+- 文本列支持双行文本、末尾图标、逐列无障碍访问和布局缓存，新增逻辑列点击回调及可见范围查询；
+- 新增 `initialScrollSide`，支持 START / END 模式初始展示左端或右端，`resetHorizontalOffsets()` 按此配置重置；
+- 调整固定范围或可见列数后，普通列与新固定区相邻，表头和数据行同步对齐；
+- 修复表头测量时的列宽适配，以及右端对齐在数据加载和尺寸变化后的偏移处理；
+- 四个 Demo 列表改用文本 Provider，适配涨跌高亮动画，列表4新增初始滚动方向开关。
 
 ### v2.1.0
 

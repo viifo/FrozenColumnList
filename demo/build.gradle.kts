@@ -12,8 +12,8 @@ android {
         applicationId = "com.viifo.frozencolumnlist"
         minSdk = 24
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 2
+        versionName = providers.gradleProperty("VERSION_NAME").get()
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

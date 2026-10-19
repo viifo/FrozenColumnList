@@ -43,6 +43,31 @@
 
     </androidx.appcompat.widget.LinearLayoutCompat>
 
+    <androidx.appcompat.widget.SwitchCompat
+        android:id="@+id/switch_initial_right"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:minHeight="48dp"
+        android:paddingStart="12dp"
+        android:paddingEnd="12dp"
+        android:text="@string/initial_scroll_right"
+        android:textColor="@color/black"
+        android:background="@color/white"
+        android:visibility="gone" />
+
+    <androidx.appcompat.widget.AppCompatTextView
+        android:id="@+id/tv_frozen_switch_hint"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingStart="12dp"
+        android:paddingEnd="12dp"
+        android:paddingBottom="8dp"
+        android:text="@string/frozen_switch_hint"
+        android:textSize="12sp"
+        android:textColor="@color/gray"
+        android:background="@color/white"
+        android:visibility="gone" />
+
     <com.scwang.smart.refresh.layout.SmartRefreshLayout
         android:id="@+id/refresh_layout"
         android:layout_width="match_parent"

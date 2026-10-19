@@ -14,7 +14,7 @@ import com.viifo.frozencolumnlist.ext.dp2px
 import com.viifo.frozencolumnlist.layout.FrozenColumnLayoutManager
 import com.viifo.frozencolumnlist.layout.GenericStockAdapter
 import com.viifo.frozencolumnlist.layout.MiddleFrozenColumnLayoutManager
-import com.viifo.frozencolumnlist.layout.MiddleFrozenRowLayout
+import com.viifo.frozencolumnlist.layout.FrozenRowViewport
 import com.viifo.frozencolumnlist.provider.ColumnProvider
 import com.viifo.frozencolumnlist.provider.SpringBackAnimatorProvider
 import kotlin.math.abs
@@ -121,15 +121,21 @@ class FrozenColumnList @JvmOverloads constructor(
 
     fun setColumnConfig(config: FrozenColumnConfig) {
         val previous = columnConfig
-        val structuralChange = layoutManager == null ||
+        val frozenRangeChanged =
             previous.frozenColumnPosition != config.frozenColumnPosition ||
             previous.frozenColumnCount != config.frozenColumnCount ||
-            previous.middleColumnStart != config.middleColumnStart ||
+            previous.middleColumnStart != config.middleColumnStart
+        val structuralChange = layoutManager == null || frozenRangeChanged ||
             previous.frozenViewportStart != config.frozenViewportStart ||
             previous.visibleColumnCount != config.visibleColumnCount
+        // 已有数据时切换固定范围，应展示紧邻新固定区的普通列；初始方向只负责首次展示/主动重置。
+        val alignToFrozenColumns = structuralChange &&
+            genericStockAdapter?.currentList?.isNotEmpty() == true
         columnConfig = config
         horizontalScrollThreshold = config.horizontalScrollThreshold ?: horizontalScrollThreshold
         if (!structuralChange) {
+            if (previous.initialScrollSide != config.initialScrollSide) stopScroll()
+            leadingLayoutManager?.initialScrollSide = config.initialScrollSide
             middleLayoutManager?.scrollMode = config.scrollMode
             genericStockAdapter?.columnConfig = config
             attachedHeader?.setColumnConfig(config)
@@ -142,10 +148,15 @@ class FrozenColumnList @JvmOverloads constructor(
             val manager = FrozenColumnLayoutManager(context).also {
                 it.frozenColumnCount = config.frozenColumnCount
                 it.frozenColumnPosition = config.frozenColumnPosition
+                it.initialScrollSide = config.initialScrollSide
                 it.overScrollDamping = overScrollDamping
                 it.overScrollAnimatorThreshold = overScrollAnimatorThreshold
                 it.maxOverScrollDistance = maxOverScrollDistance
                 it.canScrollHorizontally = canScrollHorizontally
+                if (alignToFrozenColumns) {
+                    it.resetHorizontalOffset(if (config.frozenColumnPosition == FrozenColumnPosition.END)
+                        FrozenColumnSide.RIGHT else FrozenColumnSide.LEFT)
+                }
             }
             leadingLayoutManager = manager
             middleLayoutManager = null
@@ -207,8 +218,10 @@ class FrozenColumnList @JvmOverloads constructor(
         syncHeaderOffset(header)
     }
 
+    /** 恢复配置的默认展示侧；MIDDLE 模式恢复紧邻中间固定列的位置。 */
     fun resetHorizontalOffsets() {
-        leadingLayoutManager?.updateHorizontalOffset(0)
+        stopScroll()
+        leadingLayoutManager?.resetHorizontalOffset()
         middleLayoutManager?.resetOffsets()
     }
 
@@ -255,6 +268,10 @@ class FrozenColumnList @JvmOverloads constructor(
     fun addChildClickViewIds(@IdRes vararg ids: Int) = genericStockAdapter?.addChildClickViewIds(*ids) ?: Unit
     fun setOnItemClickListener(listener: ((View, Int, Int) -> Unit)?) {
         genericStockAdapter?.onItemClickListener = listener
+    }
+    /** Clicks on logical text columns; columnIndex is the data order, columnId is the provider ID. */
+    fun setOnColumnClickListener(listener: ((View, Int, Int, Int) -> Unit)?) {
+        genericStockAdapter?.onColumnClickListener = listener
     }
     fun setOnItemChildClickListener(listener: ((View, Int, Int) -> Unit)?) {
         genericStockAdapter?.onItemChildClickListener = listener
@@ -359,7 +376,7 @@ class FrozenColumnList @JvmOverloads constructor(
 
     private fun middleSideAt(x: Float): FrozenColumnSide? {
         val row = (0 until childCount).asSequence()
-            .mapNotNull { getChildAt(it) as? MiddleFrozenRowLayout }
+            .mapNotNull { getChildAt(it) as? FrozenRowViewport }
             .firstOrNull() ?: return null
         return when {
             x < row.frozenStart -> FrozenColumnSide.LEFT

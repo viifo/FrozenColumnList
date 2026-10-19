@@ -11,6 +11,8 @@ import androidx.core.view.isEmpty
 import com.viifo.frozencolumnlist.data.FrozenColumnData
 import com.viifo.frozencolumnlist.data.FrozenHeaderData
 import com.viifo.frozencolumnlist.layout.MiddleFrozenRowLayout
+import com.viifo.frozencolumnlist.layout.FrozenRowViewport
+import com.viifo.frozencolumnlist.layout.FrozenTextRowLayout
 import com.viifo.frozencolumnlist.layout.VisibleColumnWidthFitter
 import com.viifo.frozencolumnlist.provider.ColumnProvider
 import com.viifo.frozencolumnlist.provider.FrozenHeaderViewHolder
@@ -60,24 +62,39 @@ class FrozenColumnHeader @JvmOverloads constructor(
         val provider = provider ?: error("ColumnProvider is not set")
         headerData.clear()
         headerData.addAll(data)
+        if (data.isEmpty()) {
+            removeAllViews()
+            headerRowView = null
+            headerHolder = null
+            return
+        }
 
         val existingRow = headerRowView
         val existingHolder = headerHolder
-        if (existingRow != null && existingHolder != null && existingRow.childCount == data.size) {
+        val existingCount = (existingRow as? FrozenTextRowLayout)?.columnCount ?: existingRow?.childCount
+        if (existingRow != null && existingHolder != null && existingCount == data.size) {
             existingHolder.bind(data)
             return
         }
 
         removeAllViews()
         val row = provider.createHeaderRowView(this, data.size)
-        require(row.childCount == data.size) {
+        require(((row as? FrozenTextRowLayout)?.columnCount ?: row.childCount) == data.size) {
             "createHeaderRowView must contain ${data.size} direct column children, but was ${row.childCount}"
         }
         headerRowView = row
         configureRow()
-        data.indices.forEach { index ->
-            row.getChildAt(index).setOnClickListener { view ->
-                onHeaderItemClickListener?.invoke(view, index)
+        if (row is FrozenTextRowLayout) {
+            row.setOnClickListener {
+                row.columnAt(row.lastTouchX, row.lastTouchY)?.let { index ->
+                    onHeaderItemClickListener?.invoke(row.getFrozenColumnView(index) ?: row, index)
+                }
+            }
+        } else {
+            data.indices.forEach { index ->
+                row.getChildAt(index).setOnClickListener { view ->
+                    onHeaderItemClickListener?.invoke(view, index)
+                }
             }
         }
         addView(row, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
@@ -96,7 +113,22 @@ class FrozenColumnHeader @JvmOverloads constructor(
     }
 
     internal fun updateMiddleOffsets(left: Int, right: Int) {
-        (headerRowView as? MiddleFrozenRowLayout)?.applyHorizontalOffsets(left, right)
+        (headerRowView as? FrozenRowViewport)?.applyHorizontalOffsets(left, right)
+    }
+
+    override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+        val row = headerRowView
+        if (row != null && row.childCount > 0 && row !is FrozenTextRowLayout &&
+            columnConfig.frozenColumnPosition != FrozenColumnPosition.MIDDLE &&
+            MeasureSpec.getMode(widthMeasureSpec) != MeasureSpec.UNSPECIFIED) {
+            // 在测量子列之前适配宽度，避免先使用旧宽度布局，再与新列表偏移同步。
+            VisibleColumnWidthFitter.configure(
+                row, columnConfig.resolveFrozenStart(row.childCount),
+                columnConfig.frozenColumnCount, columnConfig.visibleColumnCount,
+                (MeasureSpec.getSize(widthMeasureSpec) - paddingLeft - paddingRight).coerceAtLeast(0)
+            )
+        }
+        super.onMeasure(widthMeasureSpec, heightMeasureSpec)
     }
 
     override fun onLayout(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {
@@ -108,6 +140,10 @@ class FrozenColumnHeader @JvmOverloads constructor(
 
     private fun configureRow() {
         val row = headerRowView ?: return
+        if (row is FrozenTextRowLayout) {
+            row.configure(columnConfig)
+            return
+        }
         if (row.isEmpty()) return
         val frozenStart = columnConfig.resolveFrozenStart(row.childCount)
         if (columnConfig.frozenColumnPosition != FrozenColumnPosition.MIDDLE) {

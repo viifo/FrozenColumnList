@@ -23,7 +23,7 @@ open class MiddleFrozenRowLayout @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
     defStyleAttr: Int = 0
-) : ViewGroup(context, attrs, defStyleAttr) {
+) : ViewGroup(context, attrs, defStyleAttr), FrozenRowViewport {
 
     internal var frozenColumnIndex: Int = 0
     internal var frozenColumnCount: Int = 1
@@ -32,32 +32,32 @@ open class MiddleFrozenRowLayout @JvmOverloads constructor(
     internal var leftOffset: Int = 0
     internal var rightOffset: Int = 0
 
-    internal val frozenStart: Int
+    override val frozenStart: Int
         get() = resolvedFrozenStart
-    internal val frozenEnd: Int
+    override val frozenEnd: Int
         get() = resolvedFrozenStart + frozenWidth
-    internal val maxLeftOffset: Int
+    override val maxLeftOffset: Int
         get() = (leftContentWidth - resolvedFrozenStart).coerceAtLeast(0)
-    internal val maxRightOffset: Int
+    override val maxRightOffset: Int
         get() = (rightContentWidth - (width - frozenEnd)).coerceAtLeast(0)
 
-    var leftBackgroundColor: Int = Color.TRANSPARENT
+    override var leftBackgroundColor: Int = Color.TRANSPARENT
         set(value) {
             if (field == value) return
             field = value
             invalidate()
         }
 
-    var rightBackgroundColor: Int = Color.TRANSPARENT
+    override var rightBackgroundColor: Int = Color.TRANSPARENT
         set(value) {
             if (field == value) return
             field = value
             invalidate()
         }
 
-    internal var lastTouchX: Float = 0f
+    final override var lastTouchX: Float = 0f
         private set
-    internal var lastTouchY: Float = 0f
+    final override var lastTouchY: Float = 0f
         private set
 
     private val backgroundPaint = Paint(Paint.ANTI_ALIAS_FLAG)
@@ -201,7 +201,7 @@ open class MiddleFrozenRowLayout @JvmOverloads constructor(
         return super.dispatchTouchEvent(event)
     }
 
-    fun sideAt(x: Float): FrozenColumnSide? {
+    override fun sideAt(x: Float): FrozenColumnSide? {
         return when {
             x < frozenStart -> FrozenColumnSide.LEFT
             x >= frozenEnd -> FrozenColumnSide.RIGHT
@@ -209,7 +209,7 @@ open class MiddleFrozenRowLayout @JvmOverloads constructor(
         }
     }
 
-    internal fun applyHorizontalOffsets(left: Int, right: Int) {
+    override fun applyHorizontalOffsets(left: Int, right: Int) {
         // ViewPager/Fragment 切换回来时，View 可能已保留有效几何信息，但因为 requestLayout
         // 导致 isLaidOut=false。此时仍应立即校正实际位移，不能只更新 offset 字段。
         if (isEmpty() || width <= 0 || height <= 0 || frozenWidth <= 0) {

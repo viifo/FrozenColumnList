@@ -8,6 +8,7 @@ import android.widget.Toast
 import androidx.fragment.app.Fragment
 import com.viifo.frozencolumnlist.FrozenColumnConfig
 import com.viifo.frozencolumnlist.FrozenColumnPosition
+import com.viifo.frozencolumnlist.FrozenColumnSide
 import com.viifo.frozencolumnlist.data.FrozenHeaderData
 import com.viifo.frozencolumnlist.data.SortDirection
 import com.viifo.frozencolumnlist.demo.R
@@ -32,15 +33,19 @@ class Watchlist4Fragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         val binding = binding ?: return
         val provider = StockColumnProvider(reverseColumns = true)
-        var frozenColumnCount = 2
+        var frozenColumnCount = 1
         var config = FrozenColumnConfig(
-            frozenColumnCount = 2,
+            frozenColumnCount = frozenColumnCount,
             frozenColumnPosition = FrozenColumnPosition.END,
-            visibleColumnCount = 4
+            visibleColumnCount = 4,
+            initialScrollSide = FrozenColumnSide.RIGHT
         )
 
         binding.tvTabWatchlist.text = "末尾列固定"
-        binding.btnLoad.text = "固定 2 列"
+        binding.btnLoad.text = getString(R.string.frozen_column_count, frozenColumnCount)
+        binding.switchInitialRight.visibility = View.VISIBLE
+        binding.switchInitialRight.isChecked = true
+        binding.tvFrozenSwitchHint.visibility = View.VISIBLE
         binding.refreshLayout.setEnableRefresh(false)
         binding.refreshLayout.setEnableLoadMore(false)
         binding.refreshLayout.setEnableNestedScroll(false)
@@ -55,8 +60,11 @@ class Watchlist4Fragment : Fragment() {
             frozenColumnCount = frozenColumnCount % 3 + 1
             config = config.copy(frozenColumnCount = frozenColumnCount)
             binding.frozenColumnList.setColumnConfig(config)
-            binding.frozenColumnList.resetHorizontalOffsets()
-            binding.btnLoad.text = "固定 $frozenColumnCount 列"
+            binding.btnLoad.text = getString(R.string.frozen_column_count, frozenColumnCount)
+        }
+        binding.switchInitialRight.setOnCheckedChangeListener { _, checked ->
+            config = config.copy(initialScrollSide = if (checked) FrozenColumnSide.RIGHT else FrozenColumnSide.LEFT)
+            binding.frozenColumnList.setColumnConfig(config)
         }
         binding.frozenColumnList.setOnItemClickListener { _, position, _ ->
             val item = binding.frozenColumnList.getItem<StockModel>(position)

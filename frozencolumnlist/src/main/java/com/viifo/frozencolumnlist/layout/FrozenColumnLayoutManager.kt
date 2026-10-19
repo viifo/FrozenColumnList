@@ -7,6 +7,7 @@ import android.view.ViewGroup
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.viifo.frozencolumnlist.FrozenColumnPosition
+import com.viifo.frozencolumnlist.FrozenColumnSide
 import com.viifo.frozencolumnlist.R
 import com.viifo.frozencolumnlist.ext.dp2px
 import com.viifo.frozencolumnlist.provider.DefaultSpringBackAnimatorProvider
@@ -42,6 +43,13 @@ class FrozenColumnLayoutManager(
     internal var frozenColumnCount: Int = 1
     /** 固定列位于行首或行尾；中间固定使用专用 LayoutManager。 */
     internal var frozenColumnPosition: FrozenColumnPosition = FrozenColumnPosition.START
+    /** 首次布局和重置时展示普通列的哪一端，与固定列所在侧无关。 */
+    internal var initialScrollSide = FrozenColumnSide.LEFT
+        set(value) {
+            if (field == value) return
+            field = value
+            resetHorizontalOffset()
+        }
 
     /** 已添加的 RecyclerView */
     private var attachedRecyclerView: RecyclerView? = null
@@ -59,6 +67,10 @@ class FrozenColumnLayoutManager(
         private set
     /** 当前是否存在真实数据行；EmptyView/Footer 不参与水平滚动。 */
     private var hasContentRow = false
+    // 切换固定列后，必须等新行完成测量才能确定右端偏移；空列表不消耗此请求。
+    private var pendingScrollSide: FrozenColumnSide? = FrozenColumnSide.LEFT
+    // 当内容暂时无需滚动（max=0）时，仍记住右端对齐，供后续尺寸变化使用。
+    private var rightEdgeAligned = false
     /** item 裁剪区域 */
     private val clipRect = Rect()
 
@@ -105,6 +117,7 @@ class FrozenColumnLayoutManager(
 
     /** 当 RecyclerView 从窗口中分离时调用 */
     override fun onDetachedFromWindow(view: RecyclerView?, recycler: RecyclerView.Recycler?) {
+        stopSpringBack()
         super.onDetachedFromWindow(view, recycler)
         attachedRecyclerView = null
         resetScrollLock()
@@ -114,19 +127,30 @@ class FrozenColumnLayoutManager(
      * 子 Item 布局
      */
     override fun onLayoutChildren(recycler: RecyclerView.Recycler?, state: RecyclerView.State?) {
+        val wasRightAligned = hasContentRow && horizontalOffset == maxScrollWidth &&
+            (maxScrollWidth > 0 || rightEdgeAligned)
         super.onLayoutChildren(recycler, state)
-        val previousOffset = horizontalOffset
+        if (state?.isPreLayout == true) {
+            syncColumns()
+            return
+        }
         // 计算最大可滚动宽度
         calculateMaxScrollWidth()
-
-        // 如果数据刷新后发现之前滚动的距离超出了新范围，需要修正
-        horizontalOffset = horizontalOffset.coerceIn(0, maxScrollWidth)
+        if (hasContentRow) {
+            horizontalOffset = when (pendingScrollSide) {
+                FrozenColumnSide.LEFT -> 0
+                FrozenColumnSide.RIGHT -> maxScrollWidth
+                null -> if (wasRightAligned) maxScrollWidth else horizontalOffset.coerceIn(0, maxScrollWidth)
+            }
+            rightEdgeAligned = pendingScrollSide?.let { it == FrozenColumnSide.RIGHT } ?: wasRightAligned
+            pendingScrollSide = null
+        } else if (wasRightAligned) {
+            pendingScrollSide = FrozenColumnSide.RIGHT
+        }
         // 同步一次当前屏幕上的所有列的位移位置
         syncColumns()
-        // END 模式在 offset=0 时也需要通知表头把末尾列锚定到右侧。
-        if (horizontalOffset != previousOffset || frozenColumnPosition == FrozenColumnPosition.END) {
-            dispatchScrollListener(horizontalOffset)
-        }
+        // 表头可能在列宽变化后重建；即使偏移不变也要同步。
+        dispatchScrollListener(horizontalOffset)
     }
 
     /**
@@ -208,6 +232,8 @@ class FrozenColumnLayoutManager(
      */
     private fun performHorizontalScroll(dx: Int): Int {
         if (!hasContentRow || childCount <= 0 || dx == 0) return 0
+        pendingScrollSide = null
+        rightEdgeAligned = false
         val prevOffset = horizontalOffset // 记录当前偏移量
         val nextOffset = horizontalOffset + dx // 计算下一个偏移量
 
@@ -263,6 +289,11 @@ class FrozenColumnLayoutManager(
      * @param viewGroup 行视图组
      */
     internal fun syncColumns(viewGroup: ViewGroup) {
+        if (viewGroup is FrozenTextRowLayout) {
+            viewGroup.applyHorizontalOffsets(horizontalOffset, horizontalOffset)
+            viewGroup.setTag(R.id.tag_frozencolumnlist_last_offset, horizontalOffset)
+            return
+        }
         if (viewGroup.childCount == 0) return
         when (frozenColumnPosition) {
             FrozenColumnPosition.START -> syncStartColumns(viewGroup)
@@ -333,10 +364,15 @@ class FrozenColumnLayoutManager(
             .asSequence()
             .mapNotNull { getChildAt(it) as? ViewGroup }
             .firstOrNull { it.getTag(R.id.tag_frozencolumnlist_content_row) == true }
-        hasContentRow = row != null
+        hasContentRow = row != null && row.width > 0
         if (row == null || row.width <= 0) {
             frozenColumnWidth = 0
             maxScrollWidth = 0
+            return
+        }
+        if (row is FrozenTextRowLayout) {
+            frozenColumnWidth = row.frozenEnd - row.frozenStart
+            maxScrollWidth = maxOf(row.maxLeftOffset, row.maxRightOffset)
             return
         }
         var totalWidth = 0
@@ -392,12 +428,25 @@ class FrozenColumnLayoutManager(
      * 更新水平滚动偏移量并同步所有可见行
      */
     internal fun updateHorizontalOffset(newOffset: Int) {
+        pendingScrollSide = null
+        rightEdgeAligned = false
         horizontalOffset = newOffset
         syncColumns()
         // 通知 RecyclerView 刷新 ItemDecoration
         attachedRecyclerView?.postInvalidateOnAnimation()
         // 通知所有水平滑动监听回调
         dispatchScrollListener(horizontalOffset)
+    }
+
+    /** 立即同步已知范围，并在下一次真实数据布局后按新范围再次对齐。 */
+    internal fun resetHorizontalOffset(side: FrozenColumnSide = initialScrollSide) {
+        stopSpringBack()
+        resetScrollLock()
+        pendingScrollSide = side
+        horizontalOffset = if (side == FrozenColumnSide.RIGHT) maxScrollWidth else 0
+        syncColumns()
+        dispatchScrollListener(horizontalOffset)
+        requestLayout()
     }
 
     /**

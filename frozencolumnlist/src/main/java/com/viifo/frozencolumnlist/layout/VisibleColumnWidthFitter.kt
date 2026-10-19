@@ -53,7 +53,7 @@ internal object VisibleColumnWidthFitter {
             frozenColumnCount = frozenCount
             visibleColumnCount = visibleCount
             fallbackViewportWidth = viewportWidth?.takeIf { it > 0 }
-            fit()
+            fit(fallbackViewportWidth)
         }
 
         fun restore() {
@@ -80,8 +80,9 @@ internal object VisibleColumnWidthFitter {
             oldBottom: Int
         ) = fit()
 
-        private fun fit() {
-            val viewportWidth = row.width.takeIf { it > 0 } ?: fallbackViewportWidth ?: return
+        private fun fit(measuringViewportWidth: Int? = null) {
+            val viewportWidth = measuringViewportWidth ?: row.width.takeIf { it > 0 }
+                ?: fallbackViewportWidth ?: return
             if (row.childCount == 0) return
             val safeFrozenStart = frozenColumnStart.coerceIn(0, row.childCount - 1)
             val safeFrozenCount = frozenColumnCount.coerceIn(1, row.childCount - safeFrozenStart)

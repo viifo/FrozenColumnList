@@ -5,13 +5,13 @@ import android.animation.AnimatorListenerAdapter
 import android.animation.ValueAnimator
 import android.content.Context
 import android.graphics.Color
-import android.util.Log
 import android.view.ViewGroup
 import androidx.appcompat.widget.AppCompatTextView
 import androidx.core.view.children
 import androidx.recyclerview.widget.DefaultItemAnimator
 import androidx.recyclerview.widget.RecyclerView
 import com.viifo.frozencolumnlist.demo.R
+import com.viifo.frozencolumnlist.layout.FrozenTextRowLayout
 
 /**
  * 股票列表项动画器
@@ -20,6 +20,7 @@ import com.viifo.frozencolumnlist.demo.R
 class StockItemAnimator(context: Context) : DefaultItemAnimator() {
 
     var isShowUpdateAnimation = false
+    private val textAnimations = mutableMapOf<RecyclerView.ViewHolder, ValueAnimator>()
 
     private val backgrounds = listOf(
         context.getDrawable(R.drawable.bg_gray_equal),
@@ -38,6 +39,32 @@ class StockItemAnimator(context: Context) : DefaultItemAnimator() {
         preInfo: ItemHolderInfo,
         postInfo: ItemHolderInfo
     ): Boolean {
+        if (isShowUpdateAnimation && oldHolder === newHolder && newHolder.itemView is FrozenTextRowLayout) {
+            endAnimation(newHolder)
+            val row = newHolder.itemView as FrozenTextRowLayout
+            val change = row.getColumnById(R.id.item_tv_change)?.text.orEmpty()
+            row.highlightColor = when {
+                change.startsWith("+") -> Color.RED
+                change.startsWith("-") -> Color.rgb(0, 145, 90)
+                else -> Color.GRAY
+            }
+            val animation = ValueAnimator.ofFloat(0.25f, 0f).apply {
+                duration = 800L
+                addUpdateListener { row.highlightAlpha = it.animatedValue as Float }
+                addListener(object : AnimatorListenerAdapter() {
+                    override fun onAnimationEnd(animation: Animator) {
+                        row.highlightAlpha = 0f
+                        textAnimations.remove(newHolder)
+                        dispatchChangeFinished(newHolder, false)
+                        if (!isRunning) dispatchAnimationsFinished()
+                    }
+                })
+            }
+            textAnimations[newHolder] = animation
+            dispatchChangeStarting(newHolder, false)
+            animation.start()
+            return true
+        }
         if (isShowUpdateAnimation && oldHolder === newHolder) {
             val itemView = newHolder.itemView as? ViewGroup
                 ?: return super.animateChange(oldHolder, newHolder, preInfo, postInfo)
@@ -74,6 +101,18 @@ class StockItemAnimator(context: Context) : DefaultItemAnimator() {
         }
         return super.animateChange(oldHolder, newHolder, preInfo, postInfo)
     }
+
+    override fun endAnimation(item: RecyclerView.ViewHolder) {
+        textAnimations[item]?.cancel()
+        super.endAnimation(item)
+    }
+
+    override fun endAnimations() {
+        textAnimations.values.toList().forEach { it.cancel() }
+        super.endAnimations()
+    }
+
+    override fun isRunning(): Boolean = textAnimations.isNotEmpty() || super.isRunning()
 
     override fun animateMove(
         holder: RecyclerView.ViewHolder?,

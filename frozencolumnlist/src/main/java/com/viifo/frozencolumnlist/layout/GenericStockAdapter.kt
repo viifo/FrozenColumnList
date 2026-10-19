@@ -28,13 +28,15 @@ import java.util.LinkedHashSet
  */
 open class GenericStockAdapter<T: FrozenColumnData>(
     val provider: ColumnProvider<T>,
-    diffCallback: DiffUtil.ItemCallback<T> = genericDiffCallback()
+    diffCallback: DiffUtil.ItemCallback<T> = genericDiffCallback(provider)
 ) : ListAdapter<T, BaseViewHolder<T>>(diffCallback) {
 
     /** Item 点击事件监听回调 */
     var onItemClickListener: ((View, position: Int, itemViewType: Int) -> Unit)? = null
     /** Item 子 View 点击事件监听回调 */
     var onItemChildClickListener: ((View, position: Int, itemViewType: Int) -> Unit)? = null
+    /** Text renderer column clicks: row View, adapter position, logical column index, stable column ID. */
+    var onColumnClickListener: ((View, Int, Int, Int) -> Unit)? = null
     /** 中间固定模式的左右区域点击回调 */
     var onSideClickListener: ((View, position: Int, FrozenColumnSide) -> Unit)? = null
     /** 中间固定模式的左右区域双击回调；设置后单击回调会延迟到双击判定结束。 */
@@ -117,7 +119,8 @@ open class GenericStockAdapter<T: FrozenColumnData>(
                     provider.getItemViewType(it) == viewType
                 }?.columnCount ?: error("No data found for item viewType=$viewType")
                 val rowContainer = provider.createItemRowView(parent, viewType, columnCount)
-                require(rowContainer.childCount == columnCount) {
+                require((rowContainer as? FrozenTextRowLayout)?.columnCount?.let { it == columnCount }
+                    ?: (rowContainer.childCount == columnCount)) {
                     "createItemRowView must contain $columnCount direct column children, " +
                         "but was ${rowContainer.childCount}"
                 }
@@ -145,6 +148,7 @@ open class GenericStockAdapter<T: FrozenColumnData>(
     override fun onBindViewHolder(holder: BaseViewHolder<T>, position: Int) {
         if (holder is GenericViewHolder<T>) {
             val item = getItem(position)
+            holder.prepareForItem(item.id)
             configureContentRow(
                 row = holder.itemView as ViewGroup,
                 columnCount = item.columnCount,
@@ -169,6 +173,7 @@ open class GenericStockAdapter<T: FrozenColumnData>(
             // payloads 不为空，执行局部刷新
             if (holder is GenericViewHolder<T>) {
                 val item = getItem(position)
+                holder.prepareForItem(item.id)
                 configureContentRow(
                     row = holder.itemView as ViewGroup,
                     columnCount = item.columnCount,
@@ -189,6 +194,11 @@ open class GenericStockAdapter<T: FrozenColumnData>(
         columnCount: Int,
         viewportWidth: Int?
     ) {
+        if (row is FrozenTextRowLayout) {
+            require(row.columnCount == columnCount) { "A viewType must have a consistent column count" }
+            row.configure(columnConfig)
+            return
+        }
         val frozenColumnStart = columnConfig.resolveFrozenStart(columnCount)
         if (columnConfig.frozenColumnPosition == FrozenColumnPosition.MIDDLE) {
             require(row is MiddleFrozenRowLayout) {
@@ -266,6 +276,13 @@ open class GenericStockAdapter<T: FrozenColumnData>(
             var lastSideClickX = 0f
             var lastSideClickY = 0f
             var pendingSingleSideClick: Runnable? = null
+            viewHolder.cancelPendingClicks = {
+                pendingSingleSideClick?.let(viewHolder.itemView::removeCallbacks)
+                pendingSingleSideClick = null
+                lastSideClickTime = 0L
+                lastSideClickItemId = null
+                lastSideClick = null
+            }
             viewHolder.itemView.setOnClickListener { v ->
                 val position = viewHolder.bindingAdapterPosition
                 if (position == RecyclerView.NO_POSITION) {
@@ -276,7 +293,19 @@ open class GenericStockAdapter<T: FrozenColumnData>(
                     FOOTER_VIEW -> onFooterViewClickListener?.invoke(v)
                     else -> {
                         onItemClickListener?.invoke(v, position, viewType)
-                        val row = v as? MiddleFrozenRowLayout
+                        (v as? FrozenTextRowLayout)?.let { textRow ->
+                            textRow.columnAt(textRow.lastTouchX, textRow.lastTouchY)?.let { index ->
+                                val columnId = textRow.columns[index].id
+                                onColumnClickListener?.invoke(v, position, index, columnId)
+                                if (columnId in childClickViewIds) {
+                                    textRow.getFrozenColumnView(index)?.let { child ->
+                                        onItemChildClickListener?.invoke(child, position, viewType)
+                                    }
+                                }
+                            }
+                        }
+                        val row = (v as? FrozenRowViewport)
+                            .takeIf { columnConfig.frozenColumnPosition == FrozenColumnPosition.MIDDLE }
                         row?.sideAt(row.lastTouchX)?.let { side ->
                             val itemId = currentList.getOrNull(position)?.id ?: return@let
                             val doubleClickListener = onSideDoubleClickListener
@@ -332,7 +361,7 @@ open class GenericStockAdapter<T: FrozenColumnData>(
             }
         }
         // 绑定 item 子项点击事件
-        if (onItemChildClickListener != null
+        if ((onItemChildClickListener != null && viewHolder.itemView !is FrozenTextRowLayout)
             || (onEmptyViewChildClickListener != null && viewType == EMPTY_VIEW)
             || (onFooterViewChildClickListener != null && viewType == FOOTER_VIEW)) {
             for (id in getChildClickViewIds()) {
@@ -422,16 +451,16 @@ open class GenericStockAdapter<T: FrozenColumnData>(
     }
 
     private fun bindSideBackgrounds(holder: GenericViewHolder<T>, position: Int) {
-        val row = holder.itemView as? MiddleFrozenRowLayout ?: return
+        val row = holder.itemView as? FrozenRowViewport ?: return
         val data = getItem(position)
         row.leftBackgroundColor = provider.getSideBackgroundColor(
-            row.context,
+            holder.itemView.context,
             data,
             FrozenColumnSide.LEFT,
             isSideSelected(position, FrozenColumnSide.LEFT)
         )
         row.rightBackgroundColor = provider.getSideBackgroundColor(
-            row.context,
+            holder.itemView.context,
             data,
             FrozenColumnSide.RIGHT,
             isSideSelected(position, FrozenColumnSide.RIGHT)
@@ -453,7 +482,24 @@ open class GenericStockAdapter<T: FrozenColumnData>(
 
     }
 
-    open class BaseViewHolder<T: FrozenColumnData>(itemView: View) : RecyclerView.ViewHolder(itemView)
+    override fun onViewRecycled(holder: BaseViewHolder<T>) {
+        holder.cancelPendingClicks?.invoke()
+        (holder.itemView as? FrozenTextRowLayout)?.highlightAlpha = 0f
+        holder.boundItemId = null
+        super.onViewRecycled(holder)
+    }
+
+    open class BaseViewHolder<T: FrozenColumnData>(itemView: View) : RecyclerView.ViewHolder(itemView) {
+        internal var boundItemId: String? = null
+        internal var cancelPendingClicks: (() -> Unit)? = null
+        internal fun prepareForItem(id: String?) {
+            if (boundItemId != id) {
+                cancelPendingClicks?.invoke()
+                (itemView as? FrozenTextRowLayout)?.highlightAlpha = 0f
+                boundItemId = id
+            }
+        }
+    }
 
     companion object {
         const val EMPTY_VIEW = 0x1000001
@@ -463,9 +509,10 @@ open class GenericStockAdapter<T: FrozenColumnData>(
         private val DOUBLE_TAP_TIMEOUT_MS = ViewConfiguration.getDoubleTapTimeout().toLong()
 
         /** 默认 DiffCallback 实现 */
-        fun <T : FrozenColumnData> genericDiffCallback() = object : DiffUtil.ItemCallback<T>() {
+        fun <T : FrozenColumnData> genericDiffCallback(provider: ColumnProvider<T>? = null) = object : DiffUtil.ItemCallback<T>() {
             override fun areItemsTheSame(oldItem: T, newItem: T) = oldItem.id == newItem.id
             override fun areContentsTheSame(oldItem: T, newItem: T) = oldItem == newItem
+            override fun getChangePayload(oldItem: T, newItem: T): Any? = provider?.getChangePayload(oldItem, newItem)
         } as DiffUtil.ItemCallback<T>
     }
 
